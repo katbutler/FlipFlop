@@ -65,6 +65,11 @@ class LoginActivity : AppCompatActivity() {
         val response = AuthenticationClient.getResponse(resultCode, data)
 
         SpotifyPrefs.saveAccessToken(this, response.accessToken)
+
+        val flipFlopIntent = Intent(this, FlipFlopActivity::class.java)
+        startActivity(flipFlopIntent)
+        
+        finish()
     }
 
     private fun getRedirectUri(): Uri {

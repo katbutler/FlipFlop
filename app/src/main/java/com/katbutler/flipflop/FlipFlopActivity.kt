@@ -43,11 +43,14 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
     }
 
     override fun onConnectionMessage(p0: String?) {
-        Log.d(TAG, "$p0")
+        Log.d(TAG, "onConnectionMessage $p0")
     }
 
-    override fun onLoginFailed(p0: Error?) {
-        Log.d(TAG, "$p0")
+    override fun onLoginFailed(err: Error?) {
+        Log.d(TAG, "onLoginFailed $err")
+        SpotifyPrefs.clearAccessToken(this)
+
+        showLoginActivity()
     }
 
     override fun onTemporaryError() {
@@ -89,5 +92,6 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
         val loginIntent = Intent(this, LoginActivity::class.java)
 
         startActivity(loginIntent)
+        finish()
     }
 }
