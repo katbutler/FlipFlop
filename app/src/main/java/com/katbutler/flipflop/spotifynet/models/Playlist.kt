@@ -12,6 +12,14 @@ data class Playlist(
         val uri: String
 )
 
+data class Playlists(
+        val href: String,
+        val items: List<Playlist>,
+        val limit: Int,
+        val offset: Int,
+        val total: Int
+)
+
 data class SpotifyImage(
         val height: Int,
         val width: Int,

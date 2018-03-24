@@ -110,7 +110,7 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
         })
 
         spotifyNet.getPlaylistsForCurrentUser({ playlists ->
-            Log.d(TAG, "${playlists.map { it.name }}")
+            Log.d(TAG, "${playlists.items.map { it.name }}")
         })
     }
 }

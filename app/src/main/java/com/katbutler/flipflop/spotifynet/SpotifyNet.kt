@@ -3,7 +3,7 @@ package com.katbutler.flipflop.spotifynet
 import android.content.Context
 import android.util.Log
 import com.katbutler.flipflop.prefs.SpotifyPrefs
-import com.katbutler.flipflop.spotifynet.models.Playlist
+import com.katbutler.flipflop.spotifynet.models.Playlists
 import com.katbutler.flipflop.spotifynet.models.UserProfile
 import com.katbutler.flipflop.spotifynet.services.PlaylistService
 import com.katbutler.flipflop.spotifynet.services.UserService
@@ -63,9 +63,9 @@ class SpotifyNet(val context: Context) {
         })
     }
 
-    fun getPlaylistsForCurrentUser(callback: (List<Playlist>) -> Unit) {
-        playlistService.listMePlaylists().enqueue(object : Callback<List<Playlist>> {
-            override fun onResponse(call: Call<List<Playlist>>, response: Response<List<Playlist>>) {
+    fun getPlaylistsForCurrentUser(callback: (Playlists) -> Unit) {
+        playlistService.listMePlaylists().enqueue(object : Callback<Playlists> {
+            override fun onResponse(call: Call<Playlists>, response: Response<Playlists>) {
                 if (response.isSuccessful) {
                     response.body()?.let {
                         callback(it)
@@ -73,8 +73,9 @@ class SpotifyNet(val context: Context) {
                 }
             }
 
-            override fun onFailure(call: Call<List<Playlist>>?, t: Throwable?) {
+            override fun onFailure(call: Call<Playlists>?, t: Throwable?) {
                 Log.e(TAG, "getPlaylistsForCurrentUser onFailure")
+                t?.printStackTrace()
             }
         })
     }
