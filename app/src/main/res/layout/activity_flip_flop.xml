@@ -6,13 +6,12 @@
     android:layout_height="match_parent"
     tools:context="com.katbutler.flipflop.FlipFlopActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
+    <Button
+        android:id="@+id/login_button"
+        style="@android:style/Widget.Material.Button.Borderless.Colored"
+        android:layout_width="187dp"
+        android:layout_height="48dp"
+        android:text="@string/log_in_with_spotify"
+        tools:layout_editor_absoluteX="99dp"
+        tools:layout_editor_absoluteY="299dp" />
 </android.support.constraint.ConstraintLayout>
