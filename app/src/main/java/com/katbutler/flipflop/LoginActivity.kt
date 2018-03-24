@@ -27,8 +27,6 @@ class LoginActivity : AppCompatActivity() {
         findViewById<Button>(R.id.login_button)
     }
 
-    var player: SpotifyPlayer? = null
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
@@ -45,7 +43,7 @@ class LoginActivity : AppCompatActivity() {
         val builder = AuthenticationRequest.Builder(BuildConfig.CLIENT_ID,
                 AuthenticationResponse.Type.TOKEN,
                 getRedirectUri().toString())
-                .setScopes(arrayOf("user-read-private", "streaming"))
+                .setScopes(arrayOf("user-read-private", "streaming", "playlist-read-private"))
                 .setShowDialog(true)
         val request = builder.build()
 
@@ -68,7 +66,7 @@ class LoginActivity : AppCompatActivity() {
 
         val flipFlopIntent = Intent(this, FlipFlopActivity::class.java)
         startActivity(flipFlopIntent)
-        
+
         finish()
     }
 

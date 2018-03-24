@@ -5,6 +5,7 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import com.katbutler.flipflop.prefs.SpotifyPrefs
+import com.katbutler.flipflop.spotifynet.SpotifyNet
 import com.spotify.sdk.android.player.*
 import com.spotify.sdk.android.player.Spotify
 
@@ -12,6 +13,10 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
 
     companion object {
         const val TAG = "FlipFlopActivity"
+    }
+
+    private val spotifyNet by lazy {
+        SpotifyNet(this)
     }
 
     var player: SpotifyPlayer? = null
@@ -39,7 +44,8 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
 
     override fun onLoggedIn() {
         Log.d(TAG, "logged in")
-        player?.playUri(null, "spotify:track:2E6IvFl2GxvfFKoZWBtQso", 0, 0)
+
+//        player?.playUri(null, "spotify:track:2E6IvFl2GxvfFKoZWBtQso", 0, 0)
     }
 
     override fun onConnectionMessage(p0: String?) {
@@ -77,6 +83,8 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
         val playerConfig = Config(this, accessToken, BuildConfig.CLIENT_ID)
         Spotify.getPlayer(playerConfig, this, object : SpotifyPlayer.InitializationObserver {
             override fun onInitialized(spotifyPlayer: SpotifyPlayer) {
+                fetchSpotifyData()
+
                 player = spotifyPlayer
                 player?.addConnectionStateCallback(this@FlipFlopActivity)
                 player?.addNotificationCallback(this@FlipFlopActivity)
@@ -93,5 +101,16 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
 
         startActivity(loginIntent)
         finish()
+    }
+
+    private fun fetchSpotifyData() {
+        spotifyNet.getCurrentUserProfile({ userProfile ->
+            Log.d(TAG, "displayName: ${userProfile.displayName}")
+            Log.d(TAG, "id: ${userProfile.id}")
+        })
+
+        spotifyNet.getPlaylistsForCurrentUser({ playlists ->
+            Log.d(TAG, "${playlists.map { it.name }}")
+        })
     }
 }
