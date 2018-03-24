@@ -5,13 +5,4 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context="com.katbutler.flipflop.FlipFlopActivity">
-
-    <Button
-        android:id="@+id/login_button"
-        style="@android:style/Widget.Material.Button.Borderless.Colored"
-        android:layout_width="187dp"
-        android:layout_height="48dp"
-        android:text="@string/log_in_with_spotify"
-        tools:layout_editor_absoluteX="99dp"
-        tools:layout_editor_absoluteY="299dp" />
 </android.support.constraint.ConstraintLayout>
