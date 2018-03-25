@@ -16,6 +16,8 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
+data class UnauthorizedException(override val message: String) : Exception(message)
+data class UnknownSpotifyException(override val message: String) : Exception(message)
 
 /**
  * Created by kat on 2018-03-24.
@@ -63,19 +65,26 @@ class SpotifyNet(val context: Context) {
         })
     }
 
-    fun getPlaylistsForCurrentUser(callback: (Playlists) -> Unit) {
+    fun getPlaylistsForCurrentUser(onSuccess: (Playlists) -> Unit, onError: (Throwable?) -> Unit) {
         playlistService.listMePlaylists().enqueue(object : Callback<Playlists> {
             override fun onResponse(call: Call<Playlists>, response: Response<Playlists>) {
                 if (response.isSuccessful) {
                     response.body()?.let {
-                        callback(it)
+                        onSuccess(it)
+                        return
                     }
+                }
+
+                when (response.code()) {
+                    401 -> onError(UnauthorizedException("Unauthorized"))
+                    else -> onError(UnknownSpotifyException("Unknown Error"))
                 }
             }
 
             override fun onFailure(call: Call<Playlists>?, t: Throwable?) {
                 Log.e(TAG, "getPlaylistsForCurrentUser onFailure")
                 t?.printStackTrace()
+                onError(t)
             }
         })
     }

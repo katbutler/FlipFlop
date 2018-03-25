@@ -32,9 +32,10 @@ import android.view.MenuInflater
 import android.text.style.ForegroundColorSpan
 import android.text.SpannableString
 import com.katbutler.flipflop.R.color.*
+import com.katbutler.flipflop.spotifynet.UnauthorizedException
 
 
-class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.NotificationCallback {
+class FlipFlopActivity : AppCompatActivity() {
 
     companion object {
         const val TAG = "FlipFlopActivity"
@@ -47,8 +48,6 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
     private lateinit var playlistsRecyclerView: RecyclerView
     private lateinit var playlistsAdapter: PlaylistsAdapter
     private lateinit var viewManager: RecyclerView.LayoutManager
-
-    lateinit var player: SpotifyPlayer
 
     private val selectedPlaylists: MutableList<Playlist> = arrayListOf()
 
@@ -71,79 +70,10 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
         initSpotify()
     }
 
-    override fun onDestroy() {
-        Spotify.destroyPlayer(this)
-        super.onDestroy()
-    }
-
-
-    //region ConnectionStateCallback methods
-    override fun onLoggedOut() {
-        Log.d(TAG, "logged out")
-        SpotifyPrefs.clearAccessToken(this)
-
-        showLoginActivity()
-    }
-
-    override fun onLoggedIn() {
-        Log.d(TAG, "logged in")
-
-//        player?.playUri(null, "spotify:track:2E6IvFl2GxvfFKoZWBtQso", 0, 0)
-    }
-
-    override fun onConnectionMessage(p0: String?) {
-        Log.d(TAG, "onConnectionMessage $p0")
-    }
-
-    override fun onLoginFailed(err: Error?) {
-        Log.d(TAG, "onLoginFailed $err")
-        SpotifyPrefs.clearAccessToken(this)
-
-        showLoginActivity()
-    }
-
-    override fun onTemporaryError() {
-        Log.d(TAG, "temp error")
-    }
-    //endregion
-
-
-    //region Player.NotificationCallback methods
-    override fun onPlaybackError(p0: Error?) {
-        Log.d(TAG, "$p0")
-    }
-
-    override fun onPlaybackEvent(p0: PlayerEvent?) {
-        Log.d(TAG, "$p0")
-    }
-    //endregion
-
-
     private fun initSpotify() {
-        val accessToken = SpotifyPrefs.getAccessToken(this) ?: return showLoginActivity()
+        SpotifyPrefs.getAccessToken(this) ?: return LoginActivity.showLoginActivity(this)
 
-
-        val playerConfig = Config(this, accessToken, BuildConfig.CLIENT_ID)
-        Spotify.getPlayer(playerConfig, this, object : SpotifyPlayer.InitializationObserver {
-            override fun onInitialized(spotifyPlayer: SpotifyPlayer) {
-                fetchSpotifyData()
-
-                player = spotifyPlayer
-                player.addConnectionStateCallback(this@FlipFlopActivity)
-                player.addNotificationCallback(this@FlipFlopActivity)
-            }
-
-            override fun onError(throwable: Throwable) {
-                Log.e(FlipFlopActivity.TAG, "Could not initialize player: " + throwable.message)
-            }
-        })
-    }
-
-    private fun showLoginActivity() {
-        val loginIntent = Intent(this, LoginActivity::class.java)
-
-        startActivity(loginIntent)
-        finish()
+        fetchSpotifyData()
     }
 
     private fun fetchSpotifyData() {
@@ -152,9 +82,14 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
             Log.d(TAG, "id: ${userProfile.id}")
         })
 
-        spotifyNet.getPlaylistsForCurrentUser({ playlists ->
-            populatePlaylistsRecyclerView(playlists)
-        })
+        spotifyNet.getPlaylistsForCurrentUser(
+                { playlists ->
+                    populatePlaylistsRecyclerView(playlists)
+                },
+                { throwable ->
+                    if (throwable is UnauthorizedException) LoginActivity.showLoginActivity(this)
+                    else throwable?.let { throw it }
+                })
     }
 
     private fun populatePlaylistsRecyclerView(playlists: Playlists) {
@@ -198,7 +133,8 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
                 bindPlaylistPanel(selectedPlaylist, selected_playlist_left_name, selected_playlist_left_image)
                 bindPlaylistPanel(selectedRightPlaylist, selected_playlist_right_name, selected_playlist_right_image)
             }
-            else -> {}
+            else -> {
+            }
         }
     }
 
@@ -227,8 +163,16 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
         }
     }
 
-    private fun startPlayer() {
+    private fun showPlayer() {
+        val playerIntent = Intent(this, PlayerActivity::class.java)
+        playerIntent.apply {
+            putExtra("playlist1", selectedPlaylists[0].id)
+            putExtra("playlist2", selectedPlaylists[1].id)
+            putExtra("playlist1uri", selectedPlaylists[0].uri)
+            putExtra("playlist2uri", selectedPlaylists[1].uri)
+        }
 
+        startActivity(playerIntent)
     }
 
     //region Menu
@@ -242,15 +186,15 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
     override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
         menu?.getItem(0)?.let {
             val s = SpannableString("start")
-            val enabled = selectedPlaylists.count() != 2
+            val disabled = selectedPlaylists.count() != 2
 
-            if (enabled) {
+            if (disabled) {
                 s.setSpan(ForegroundColorSpan(resources.getColor(lightGreenTextColor)), 0, s.length, 0)
             } else {
                 s.setSpan(ForegroundColorSpan(Color.WHITE), 0, s.length, 0)
             }
 
-            it.isEnabled = enabled
+            it.isEnabled = !disabled
             it.title = s
         }
         return true
@@ -258,7 +202,7 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
 
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
         R.id.action_start -> {
-            startPlayer()
+            showPlayer()
             true
         }
 

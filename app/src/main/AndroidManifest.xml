@@ -23,6 +23,10 @@
 
         </activity>
 
+        <activity android:name=".PlayerActivity">
+
+        </activity>
+
         <activity
             android:exported="true"
             android:name="com.spotify.sdk.android.authentication.AuthCallbackActivity"

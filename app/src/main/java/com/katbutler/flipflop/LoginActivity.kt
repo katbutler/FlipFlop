@@ -1,5 +1,6 @@
 package com.katbutler.flipflop
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -21,6 +22,13 @@ class LoginActivity : AppCompatActivity() {
 
     companion object {
         const val TAG = "LoginActivity"
+
+        fun showLoginActivity(activity: Activity) {
+            val loginIntent = Intent(activity, com.katbutler.flipflop.LoginActivity::class.java)
+
+            activity.startActivity(loginIntent)
+            activity.finish()
+        }
     }
 
     private val loginButton by lazy {
@@ -43,7 +51,7 @@ class LoginActivity : AppCompatActivity() {
         val builder = AuthenticationRequest.Builder(BuildConfig.CLIENT_ID,
                 AuthenticationResponse.Type.TOKEN,
                 getRedirectUri().toString())
-                .setScopes(arrayOf("user-read-private", "streaming", "playlist-read-private"))
+                .setScopes(arrayOf("user-read-private", "streaming", "playlist-read-private", "user-modify-playback-state"))
                 .setShowDialog(true)
         val request = builder.build()
 
