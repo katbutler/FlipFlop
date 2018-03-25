@@ -1,6 +1,8 @@
 package com.katbutler.flipflop
 
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.opengl.Visibility
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
@@ -8,6 +10,8 @@ import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
 import android.text.TextUtils
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
@@ -24,6 +28,11 @@ import com.spotify.sdk.android.player.Spotify
 import kotlinx.android.synthetic.main.activity_flip_flop.*
 import kotlinx.android.synthetic.main.activity_flip_flop.view.*
 import kotlinx.android.synthetic.main.playlist_item.view.*
+import android.view.MenuInflater
+import android.text.style.ForegroundColorSpan
+import android.text.SpannableString
+import com.katbutler.flipflop.R.color.*
+
 
 class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.NotificationCallback {
 
@@ -46,7 +55,6 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_flip_flop)
-        Log.d(TAG, "onCreate")
 
         viewManager = LinearLayoutManager(this)
 
@@ -56,9 +64,8 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
         }
 
         selected_playlist_left_name.ellipsize = TextUtils.TruncateAt.END
-        selected_playlist_left_name.setSingleLine()
-
         selected_playlist_right_name.ellipsize = TextUtils.TruncateAt.END
+        selected_playlist_left_name.setSingleLine()
         selected_playlist_right_name.setSingleLine()
 
         initSpotify()
@@ -178,6 +185,7 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
 
     private fun drawPanel() {
         setLayoutVisibilities()
+        invalidateOptionsMenu() //needed to disable/enable start option
 
         when (selectedPlaylists.count()) {
             1 -> {
@@ -218,4 +226,45 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
                     .into(playlistImageView)
         }
     }
+
+    private fun startPlayer() {
+
+    }
+
+    //region Menu
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        val inflater = menuInflater
+        inflater.inflate(R.menu.playlists_menu, menu)
+
+        return true
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
+        menu?.getItem(0)?.let {
+            val s = SpannableString("start")
+            val enabled = selectedPlaylists.count() != 2
+
+            if (enabled) {
+                s.setSpan(ForegroundColorSpan(resources.getColor(lightGreenTextColor)), 0, s.length, 0)
+            } else {
+                s.setSpan(ForegroundColorSpan(Color.WHITE), 0, s.length, 0)
+            }
+
+            it.isEnabled = enabled
+            it.title = s
+        }
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
+        R.id.action_start -> {
+            startPlayer()
+            true
+        }
+
+        else -> {
+            super.onOptionsItemSelected(item)
+        }
+    }
+    //endregion
 }
