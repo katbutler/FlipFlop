@@ -27,6 +27,6 @@ data class SpotifyImage(
 )
 
 data class PlaylistTracks(
-        val count: Int,
+        val total: Int,
         val href: String
 )
