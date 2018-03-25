@@ -3,9 +3,13 @@ package com.katbutler.flipflop
 import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.v7.widget.LinearLayoutManager
+import android.support.v7.widget.RecyclerView
 import android.util.Log
+import com.katbutler.flipflop.adapters.PlaylistsAdapter
 import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.katbutler.flipflop.spotifynet.SpotifyNet
+import com.katbutler.flipflop.spotifynet.models.Playlists
 import com.spotify.sdk.android.player.*
 import com.spotify.sdk.android.player.Spotify
 
@@ -19,12 +23,24 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
         SpotifyNet(this)
     }
 
-    var player: SpotifyPlayer? = null
+    private lateinit var playlistsRecyclerView: RecyclerView
+    private lateinit var playlistsAdapter: PlaylistsAdapter
+    private lateinit var viewManager: RecyclerView.LayoutManager
+
+    lateinit var player: SpotifyPlayer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_flip_flop)
         Log.d(TAG, "onCreate")
+
+        viewManager = LinearLayoutManager(this)
+
+        playlistsRecyclerView = findViewById<RecyclerView>(R.id.playlists_recycler_view).apply {
+            setHasFixedSize(true)
+            layoutManager = viewManager
+        }
+
         initSpotify()
     }
 
@@ -86,8 +102,8 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
                 fetchSpotifyData()
 
                 player = spotifyPlayer
-                player?.addConnectionStateCallback(this@FlipFlopActivity)
-                player?.addNotificationCallback(this@FlipFlopActivity)
+                player.addConnectionStateCallback(this@FlipFlopActivity)
+                player.addNotificationCallback(this@FlipFlopActivity)
             }
 
             override fun onError(throwable: Throwable) {
@@ -110,7 +126,12 @@ class FlipFlopActivity : AppCompatActivity(), ConnectionStateCallback, Player.No
         })
 
         spotifyNet.getPlaylistsForCurrentUser({ playlists ->
-            Log.d(TAG, "${playlists.items.map { it.name }}")
+            populatePlaylistsRecyclerView(playlists)
         })
+    }
+
+    private fun populatePlaylistsRecyclerView(playlists: Playlists) {
+        playlistsAdapter = PlaylistsAdapter(playlists)
+        playlistsRecyclerView.adapter = playlistsAdapter
     }
 }
