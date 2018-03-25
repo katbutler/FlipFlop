@@ -3,6 +3,7 @@ package com.katbutler.flipflop.adapters
 import android.content.Context
 import android.net.Uri
 import android.support.v7.widget.RecyclerView
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,18 +14,22 @@ import com.bumptech.glide.GlideBuilder
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
 import com.bumptech.glide.request.RequestOptions
 import com.katbutler.flipflop.R
+import com.katbutler.flipflop.spotifynet.models.Playlist
 import com.katbutler.flipflop.spotifynet.models.Playlists
 import kotlinx.android.synthetic.main.playlist_item.view.*
+
+typealias OnSelectPlaylist = (Playlist) -> Boolean
 
 /**
  * Created by kat on 2018-03-24.
  */
-class PlaylistsAdapter(private val playlists: Playlists): RecyclerView.Adapter<PlaylistsAdapter.ViewHolder>() {
+class PlaylistsAdapter(private val playlists: Playlists, private val onSelectPlaylist: OnSelectPlaylist): RecyclerView.Adapter<PlaylistsAdapter.ViewHolder>() {
 
     class ViewHolder(val context: Context, val playlistItemView: View) : RecyclerView.ViewHolder(playlistItemView) {
-        val playlistNameTextView: TextView = playlistItemView.findViewById(R.id.playlist_name)
-        val playlistTrackCountTextView: TextView = playlistItemView.findViewById(R.id.track_count)
-        val playlistImageView: ImageView = playlistItemView.findViewById(R.id.playlist_image)
+        val playlistNameTextView: TextView = playlistItemView.playlist_name
+        val playlistTrackCountTextView: TextView = playlistItemView.track_count
+        val playlistImageView: ImageView = playlistItemView.playlist_image
+        val selectedCheck: ImageView = playlistItemView.selected_check
     }
 
     //region RecyclerView.Adapter methods
@@ -36,7 +41,14 @@ class PlaylistsAdapter(private val playlists: Playlists): RecyclerView.Adapter<P
     override fun getItemCount() = playlists.total
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val playlist = playlists.items.get(position)
+        val playlist = playlists.items[position]
+
+        holder.playlistItemView.setOnClickListener {
+            if (onSelectPlaylist(playlist)) {
+                playlist.selected = !playlist.selected
+                notifyDataSetChanged()
+            }
+        }
 
         val smallImg = playlist.images.firstOrNull { it.height < 100 } ?: playlist.images.firstOrNull()
         smallImg?.let {
@@ -48,6 +60,7 @@ class PlaylistsAdapter(private val playlists: Playlists): RecyclerView.Adapter<P
                     .transition(withCrossFade())
                     .into(holder.playlistImageView)
         }
+        holder.selectedCheck.visibility = if (playlist.selected) View.VISIBLE else View.GONE
         holder.playlistNameTextView.text = playlist.name
         holder.playlistTrackCountTextView.text = "${playlist.tracks.total} tracks"
     }

@@ -4,12 +4,16 @@ package com.katbutler.flipflop.spotifynet.models
  * Created by kat on 2018-03-24.
  */
 data class Playlist(
+        //From json model
         val id: String,
         val images: List<SpotifyImage>,
         val name: String,
         val tracks: PlaylistTracks,
         val type: String,
-        val uri: String
+        val uri: String,
+
+        //Added states
+        var selected: Boolean = false
 )
 
 data class Playlists(

@@ -39,4 +39,17 @@
         android:text="Track Count #"
         app:layout_constraintStart_toEndOf="@+id/playlist_image"
         app:layout_constraintTop_toBottomOf="@+id/playlist_name" />
+
+    <ImageView
+        android:id="@+id/selected_check"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="8dp"
+        android:src="@drawable/ic_check_accent_24dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:visibility="visible"/>
 </android.support.constraint.ConstraintLayout>
