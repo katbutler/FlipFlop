@@ -3,6 +3,7 @@ package com.katbutler.flipflop
 import android.os.*
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
+import android.widget.SeekBar
 import android.widget.Toast
 import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.katbutler.flipflop.spotifynet.SpotifyNet
@@ -28,8 +29,14 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
     val handler: Handler by lazy {
         object : Handler(thread.looper) {
             override fun handleMessage(msg: Message?) {
-                val trackUri = msg?.obj as? String
-                trackUri?.let { player.queue(this@PlayerActivity, it) }
+                if (msg?.what == 0xFEED) {
+                    seekBar.progress = player.playbackState.positionMs.toInt()
+                    handler.sendEmptyMessageDelayed(0xFEED, 1000)
+                } else {
+                    val trackUri = msg?.obj as? String
+                    trackUri?.let { player.queue(this@PlayerActivity, it) }
+                }
+                return
             }
         }
     }
@@ -76,21 +83,45 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         super.onDestroy()
     }
 
+    var currentTrack: Track? = null
+
     private fun initView() {
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onStartTrackingTouch(p0: SeekBar?) {
+
+            }
+
+            override fun onStopTrackingTouch(seek: SeekBar?) {
+                val progress = seek?.progress ?: 0
+                currentTrack?.let {
+                    player.seekToPosition(this@PlayerActivity, progress)
+                }
+            }
+
+            override fun onProgressChanged(p0: SeekBar?, progress: Int, p2: Boolean) {
+
+            }
+        })
+
         play_pause_button.setOnClickListener {
             if (hasFetched) {
                 if (player.playbackState.isPlaying) {
                     player.pause(this)
                 } else {
-                    player.playUri(this, playlist1Tracks.items.first().track.uri, 0, 0)
-                    playlist1Tracks.items
-                            .forEachIndexed { index, track ->
-                                if (index == 0) return@forEachIndexed
-                                Log.d("PlayerActivity", "track uri: ${track.track.uri}")
-                                handler.sendMessageDelayed(Message().apply {
-                                    obj = track.track.uri
-                                }, 300L * index)
-                            }
+                    currentTrack = playlist1Tracks.items.first()
+                    player.playUri(this, currentTrack?.track?.uri, 0, 0)
+                    seekBar.max = currentTrack?.track?.durationMs ?: Int.MAX_VALUE
+                    seekBar.progress = 0
+                    handler.sendEmptyMessageDelayed(0xFEED, 1000)
+
+//                    playlist1Tracks.items
+//                            .forEachIndexed { index, track ->
+//                                if (index == 0) return@forEachIndexed
+//                                Log.d("PlayerActivity", "track uri: ${track.track.uri}")
+//                                handler.sendMessageDelayed(Message().apply {
+//                                    obj = track.track.uri
+//                                }, 300L * index)
+//                            }
 
                 }
             }
@@ -172,11 +203,16 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         Log.d(TAG, "$p0")
     }
 
-    override fun onPlaybackEvent(p0: PlayerEvent?) {
-        Log.d(TAG, "$p0")
-        if (p0?.name == "kSpPlaybackNotifyTrackChanged") {
-            player.resume(this)
+    override fun onPlaybackEvent(playerEvent: PlayerEvent?) {
+        Log.d(TAG, "$playerEvent")
+//        if (playerEvent?.name == "kSpPlaybackNotifyTrackChanged") {
+//            player.resume(this)
+//        }
+
+        if (playerEvent == PlayerEvent.kSpPlaybackNotifyTrackDelivered) {
+
         }
+
     }
     //endregion
 
