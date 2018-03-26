@@ -5,6 +5,9 @@ import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.widget.SeekBar
 import android.widget.Toast
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+import com.bumptech.glide.request.RequestOptions
 import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.katbutler.flipflop.spotifynet.SpotifyNet
 import com.katbutler.flipflop.spotifynet.models.Track
@@ -158,6 +161,16 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         player.playUri(this, track.track.uri, 0, 0)
         seekBar.max = track.track.durationMs
         seekBar.progress = 0
+
+        val options = RequestOptions().placeholder(R.drawable.flipflop_icon_grey_large)
+
+        this.runOnUiThread {
+            Glide.with(this)
+                    .setDefaultRequestOptions(options)
+                    .load(track.track.album.images.first { it.height > 500 }.url)
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .into(trackArtImageView)
+        }
     }
 
     private fun fetchTracks() {
