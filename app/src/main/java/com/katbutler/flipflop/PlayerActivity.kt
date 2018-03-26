@@ -1,12 +1,12 @@
 package com.katbutler.flipflop
 
-import android.os.Bundle
-import android.os.PersistableBundle
+import android.os.*
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.widget.Toast
 import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.katbutler.flipflop.spotifynet.SpotifyNet
+import com.katbutler.flipflop.spotifynet.models.Track
 import com.katbutler.flipflop.spotifynet.models.Tracks
 import com.spotify.sdk.android.player.*
 import kotlinx.android.synthetic.main.activity_player.*
@@ -15,6 +15,24 @@ import kotlinx.android.synthetic.main.activity_player.*
  * Created by kat on 2018-03-25.
  */
 class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.NotificationCallback, Player.OperationCallback {
+
+    companion object {
+        const val TAG = "PlayerActivity"
+    }
+
+    val thread by lazy {
+        val thread = HandlerThread("Queuer")
+        thread.start()
+        thread
+    }
+    val handler: Handler by lazy {
+        object : Handler(thread.looper) {
+            override fun handleMessage(msg: Message?) {
+                val trackUri = msg?.obj as? String
+                trackUri?.let { player.queue(this@PlayerActivity, it) }
+            }
+        }
+    }
 
     lateinit var player: SpotifyPlayer
 
@@ -28,6 +46,7 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
     private val playlistId2Uri by lazy { intent.getStringExtra("playlist2uri") }
     private lateinit var playlist1Tracks: Tracks
     private lateinit var playlist2Tracks: Tracks
+    private var hasFetched: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,10 +78,33 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
 
     private fun initView() {
         play_pause_button.setOnClickListener {
-            if (player.playbackState.isPlaying) {
-                player.pause(this)
-            } else {
-                player.playUri(this, playlist1Tracks.items.first().track.uri, 0,0)
+            if (hasFetched) {
+                if (player.playbackState.isPlaying) {
+                    player.pause(this)
+                } else {
+                    player.playUri(this, playlist1Tracks.items.first().track.uri, 0, 0)
+                    playlist1Tracks.items
+                            .forEachIndexed { index, track ->
+                                if (index == 0) return@forEachIndexed
+                                Log.d("PlayerActivity", "track uri: ${track.track.uri}")
+                                handler.sendMessageDelayed(Message().apply {
+                                    obj = track.track.uri
+                                }, 300L * index)
+                            }
+
+                }
+            }
+        }
+
+        skip_next_button.setOnClickListener {
+            if (hasFetched) {
+                player.skipToNext(this)
+            }
+        }
+
+        skip_previous_button.setOnClickListener {
+            if (hasFetched) {
+                player.skipToPrevious(this)
             }
         }
     }
@@ -71,12 +113,14 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         val userID = SpotifyPrefs.getUserID(this) ?: return
         spotifyNet.getPlaylistTracks(userID, playlistId1, { tracks ->
             playlist1Tracks = tracks
+            hasFetched = true
         }, { err ->
             Toast.makeText(this, err.toString(), Toast.LENGTH_LONG)
         })
 
         spotifyNet.getPlaylistTracks(userID, playlistId2, { tracks ->
             playlist2Tracks = tracks
+            hasFetched = true
         }, { err ->
             Toast.makeText(this, err.toString(), Toast.LENGTH_LONG)
         })
@@ -84,11 +128,11 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
 
     //region Player.OperationCallback
     override fun onSuccess() {
-
+        Log.d(TAG, "onSuccess")
     }
 
     override fun onError(err: Error?) {
-        Log.d("PlayerActivity", err.toString())
+        Log.d(TAG, err.toString())
 
         Toast.makeText(this, err.toString(), Toast.LENGTH_LONG).show()
     }
@@ -96,40 +140,43 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
 
     //region ConnectionStateCallback methods
     override fun onLoggedOut() {
-        Log.d(FlipFlopActivity.TAG, "logged out")
+        Log.d(TAG, "logged out")
         SpotifyPrefs.clearAccessToken(this)
 
         LoginActivity.showLoginActivity(this)
     }
 
     override fun onLoggedIn() {
-        Log.d(FlipFlopActivity.TAG, "logged in")
+        Log.d(TAG, "logged in")
     }
 
     override fun onConnectionMessage(p0: String?) {
-        Log.d(FlipFlopActivity.TAG, "onConnectionMessage $p0")
+        Log.d(TAG, "onConnectionMessage $p0")
     }
 
     override fun onLoginFailed(err: Error?) {
-        Log.d(FlipFlopActivity.TAG, "onLoginFailed $err")
+        Log.d(TAG, "onLoginFailed $err")
         SpotifyPrefs.clearAccessToken(this)
 
         LoginActivity.showLoginActivity(this)
     }
 
     override fun onTemporaryError() {
-        Log.d(FlipFlopActivity.TAG, "temp error")
+        Log.d(TAG, "temp error")
     }
     //endregion
 
 
     //region Player.NotificationCallback methods
     override fun onPlaybackError(p0: Error?) {
-        Log.d(FlipFlopActivity.TAG, "$p0")
+        Log.d(TAG, "$p0")
     }
 
     override fun onPlaybackEvent(p0: PlayerEvent?) {
-        Log.d(FlipFlopActivity.TAG, "$p0")
+        Log.d(TAG, "$p0")
+        if (p0?.name == "kSpPlaybackNotifyTrackChanged") {
+            player.resume(this)
+        }
     }
     //endregion
 
