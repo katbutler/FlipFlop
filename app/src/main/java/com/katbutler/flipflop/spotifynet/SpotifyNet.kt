@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.katbutler.flipflop.spotifynet.models.Playlists
+import com.katbutler.flipflop.spotifynet.models.Tracks
 import com.katbutler.flipflop.spotifynet.models.UserProfile
 import com.katbutler.flipflop.spotifynet.services.PlaylistService
 import com.katbutler.flipflop.spotifynet.services.UserService
@@ -83,6 +84,30 @@ class SpotifyNet(val context: Context) {
 
             override fun onFailure(call: Call<Playlists>?, t: Throwable?) {
                 Log.e(TAG, "getPlaylistsForCurrentUser onFailure")
+                t?.printStackTrace()
+                onError(t)
+            }
+        })
+    }
+
+    fun getPlaylistTracks(userID: String, playlistID: String, onSuccess: (Tracks) -> Unit, onError: (Throwable?) -> Unit) {
+        playlistService.getPlaylistTracks(userID, playlistID).enqueue(object : Callback<Tracks> {
+            override fun onResponse(call: Call<Tracks>, response: Response<Tracks>) {
+                if (response.isSuccessful) {
+                    response.body()?.let {
+                        onSuccess(it)
+                        return
+                    }
+                }
+
+                when (response.code()) {
+                    401 -> onError(UnauthorizedException("Unauthorized"))
+                    else -> onError(UnknownSpotifyException("Unknown Error"))
+                }
+            }
+
+            override fun onFailure(call: Call<Tracks>?, t: Throwable?) {
+                Log.e(TAG, "getPlaylistTracks onFailure")
                 t?.printStackTrace()
                 onError(t)
             }

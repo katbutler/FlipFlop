@@ -8,6 +8,7 @@ import android.content.SharedPreferences
  */
 object SpotifyPrefs {
     private const val SPOTIFY_TOKEN_KEY = "spotify_token"
+    private const val SPOTIFY_USER_ID_KEY = "spotify_user_id"
     private const val PREF_KEY = "spotify_prefs"
 
     private fun getPrefs(context: Context): SharedPreferences =
@@ -32,4 +33,22 @@ object SpotifyPrefs {
 
     fun getAccessToken(context: Context): String? =
         getPrefs(context).getString(SPOTIFY_TOKEN_KEY, null)
+
+    fun saveCurrentUserID(context: Context, userID: String) {
+        val sharedPref = getPrefs(context)
+        with(sharedPref.edit()) {
+            putString(SPOTIFY_USER_ID_KEY, userID)
+            apply()
+        }
+    }
+
+    fun clearUserID(context: Context) {
+        with(getPrefs(context).edit()) {
+            remove(SPOTIFY_USER_ID_KEY)
+            apply()
+        }
+    }
+
+    fun getUserID(context: Context): String? =
+            getPrefs(context).getString(SPOTIFY_USER_ID_KEY, null)
 }

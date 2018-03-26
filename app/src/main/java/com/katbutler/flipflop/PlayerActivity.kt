@@ -6,6 +6,8 @@ import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.widget.Toast
 import com.katbutler.flipflop.prefs.SpotifyPrefs
+import com.katbutler.flipflop.spotifynet.SpotifyNet
+import com.katbutler.flipflop.spotifynet.models.Tracks
 import com.spotify.sdk.android.player.*
 import kotlinx.android.synthetic.main.activity_player.*
 
@@ -16,16 +18,23 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
 
     lateinit var player: SpotifyPlayer
 
+    private val spotifyNet by lazy {
+        SpotifyNet(this)
+    }
+
     private val playlistId1 by lazy { intent.getStringExtra("playlist1") }
     private val playlistId2 by lazy { intent.getStringExtra("playlist2") }
     private val playlistId1Uri by lazy { intent.getStringExtra("playlist1uri") }
     private val playlistId2Uri by lazy { intent.getStringExtra("playlist2uri") }
+    private lateinit var playlist1Tracks: Tracks
+    private lateinit var playlist2Tracks: Tracks
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player)
 
         initView()
+        fetchTracks()
 
         val accessToken = SpotifyPrefs.getAccessToken(this) ?: return LoginActivity.showLoginActivity(this)
 
@@ -53,9 +62,24 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
             if (player.playbackState.isPlaying) {
                 player.pause(this)
             } else {
-                player.playUri(this, playlistId1Uri, 0,0)
+                player.playUri(this, playlist1Tracks.items.first().track.uri, 0,0)
             }
         }
+    }
+
+    private fun fetchTracks() {
+        val userID = SpotifyPrefs.getUserID(this) ?: return
+        spotifyNet.getPlaylistTracks(userID, playlistId1, { tracks ->
+            playlist1Tracks = tracks
+        }, { err ->
+            Toast.makeText(this, err.toString(), Toast.LENGTH_LONG)
+        })
+
+        spotifyNet.getPlaylistTracks(userID, playlistId2, { tracks ->
+            playlist2Tracks = tracks
+        }, { err ->
+            Toast.makeText(this, err.toString(), Toast.LENGTH_LONG)
+        })
     }
 
     //region Player.OperationCallback

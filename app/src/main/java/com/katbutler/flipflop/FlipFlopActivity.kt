@@ -78,8 +78,7 @@ class FlipFlopActivity : AppCompatActivity() {
 
     private fun fetchSpotifyData() {
         spotifyNet.getCurrentUserProfile({ userProfile ->
-            Log.d(TAG, "displayName: ${userProfile.displayName}")
-            Log.d(TAG, "id: ${userProfile.id}")
+            SpotifyPrefs.saveCurrentUserID(this, userProfile.id)
         })
 
         spotifyNet.getPlaylistsForCurrentUser(
