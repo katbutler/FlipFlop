@@ -32,6 +32,8 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
                 if (msg?.what == 0xFEED) {
                     seekBar.progress = player.playbackState.positionMs.toInt()
                     handler.sendEmptyMessageDelayed(0xFEED, 1000)
+                } else if (msg?.what == 0xDEAF) {
+                    initFirstTrack()
                 } else {
                     val trackUri = msg?.obj as? String
                     trackUri?.let { player.queue(this@PlayerActivity, it) }
@@ -42,6 +44,9 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
     }
 
     lateinit var player: SpotifyPlayer
+    lateinit var currentPlaylistID: String
+    var currentTrack: Track? = null
+    var swapTrack: Track? = null
 
     private val spotifyNet by lazy {
         SpotifyNet(this)
@@ -49,8 +54,10 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
 
     private val playlistId1 by lazy { intent.getStringExtra("playlist1") }
     private val playlistId2 by lazy { intent.getStringExtra("playlist2") }
+    private val swapLists by lazy { listOf<String>(playlistId1, playlistId2) }
     private val playlistId1Uri by lazy { intent.getStringExtra("playlist1uri") }
     private val playlistId2Uri by lazy { intent.getStringExtra("playlist2uri") }
+    private val playlistTracks = mutableMapOf<String, Tracks>()
     private lateinit var playlist1Tracks: Tracks
     private lateinit var playlist2Tracks: Tracks
     private var hasFetched: Boolean = false
@@ -83,8 +90,6 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         super.onDestroy()
     }
 
-    var currentTrack: Track? = null
-
     private fun initView() {
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onStartTrackingTouch(p0: SeekBar?) {
@@ -108,21 +113,7 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
                 if (player.playbackState.isPlaying) {
                     player.pause(this)
                 } else {
-                    currentTrack = playlist1Tracks.items.first()
-                    player.playUri(this, currentTrack?.track?.uri, 0, 0)
-                    seekBar.max = currentTrack?.track?.durationMs ?: Int.MAX_VALUE
-                    seekBar.progress = 0
-                    handler.sendEmptyMessageDelayed(0xFEED, 1000)
-
-//                    playlist1Tracks.items
-//                            .forEachIndexed { index, track ->
-//                                if (index == 0) return@forEachIndexed
-//                                Log.d("PlayerActivity", "track uri: ${track.track.uri}")
-//                                handler.sendMessageDelayed(Message().apply {
-//                                    obj = track.track.uri
-//                                }, 300L * index)
-//                            }
-
+                    player.resume(this)
                 }
             }
         }
@@ -138,13 +129,46 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
                 player.skipToPrevious(this)
             }
         }
+
+        swap_button.setOnClickListener {
+            if (hasFetched) {
+                val tempTrack = swapTrack
+                swapTrack = currentTrack
+                currentTrack = tempTrack
+
+                currentPlaylistID = swapLists.first { it != currentPlaylistID }
+                val tracks = playlistTracks[currentPlaylistID]
+                val nextTrack: Track? = currentTrack ?: tracks?.items?.firstOrNull()
+                nextTrack?.let {
+                    playTrack(it)
+                }
+            }
+        }
+    }
+
+    private fun initFirstTrack() {
+        handler.sendEmptyMessageDelayed(0xFEED, 1000)
+        playlist1Tracks.items.firstOrNull()?.let {
+            playTrack(it)
+        }
+    }
+
+    private fun playTrack(track: Track) {
+        currentTrack = track
+        player.playUri(this, track.track.uri, 0, 0)
+        seekBar.max = track.track.durationMs
+        seekBar.progress = 0
     }
 
     private fun fetchTracks() {
         val userID = SpotifyPrefs.getUserID(this) ?: return
+        currentPlaylistID = playlistId1
+
         spotifyNet.getPlaylistTracks(userID, playlistId1, { tracks ->
             playlist1Tracks = tracks
             hasFetched = true
+            playlistTracks[playlistId1] = tracks
+            handler.sendEmptyMessageDelayed(0xDEAF, 1000)
         }, { err ->
             Toast.makeText(this, err.toString(), Toast.LENGTH_LONG)
         })
@@ -152,6 +176,7 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         spotifyNet.getPlaylistTracks(userID, playlistId2, { tracks ->
             playlist2Tracks = tracks
             hasFetched = true
+            playlistTracks[playlistId2] = tracks
         }, { err ->
             Toast.makeText(this, err.toString(), Toast.LENGTH_LONG)
         })
