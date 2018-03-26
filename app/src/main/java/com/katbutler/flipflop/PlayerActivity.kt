@@ -1,5 +1,6 @@
 package com.katbutler.flipflop
 
+import android.graphics.drawable.Drawable
 import android.os.*
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
@@ -112,6 +113,7 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         })
 
         play_pause_button.setOnClickListener {
+            togglePlayPauseImage()
             if (hasFetched) {
                 if (player.playbackState.isPlaying) {
                     player.pause(this)
@@ -149,10 +151,18 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         }
     }
 
+    private fun togglePlayPauseImage() {
+        val playImage = R.drawable.ic_play_arrow_white_60dp
+        val pauseImage = R.drawable.ic_pause_black_24dp
+        val playPauseResId = if (player.playbackState.isPlaying) playImage else pauseImage
+        play_pause_button.setImageResource(playPauseResId)
+    }
+
     private fun initFirstTrack() {
         handler.sendEmptyMessageDelayed(0xFEED, 1000)
         playlist1Tracks.items.firstOrNull()?.let {
             playTrack(it)
+            togglePlayPauseImage()
         }
     }
 
@@ -170,6 +180,8 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
                     .load(track.track.album.images.first { it.height > 500 }.url)
                     .transition(DrawableTransitionOptions.withCrossFade())
                     .into(trackArtImageView)
+
+            trackArtImageView.alpha = 0.9F
         }
     }
 
