@@ -23,7 +23,7 @@ typealias OnSelectPlaylist = (Playlist) -> Boolean
 /**
  * Created by kat on 2018-03-24.
  */
-class PlaylistsAdapter(private val playlists: Playlists, private val onSelectPlaylist: OnSelectPlaylist): RecyclerView.Adapter<PlaylistsAdapter.ViewHolder>() {
+class PlaylistsAdapter(val playlists: Playlists, private val onSelectPlaylist: OnSelectPlaylist): RecyclerView.Adapter<PlaylistsAdapter.ViewHolder>() {
 
     class ViewHolder(val context: Context, val playlistItemView: View) : RecyclerView.ViewHolder(playlistItemView) {
         val playlistNameTextView: TextView = playlistItemView.playlist_name

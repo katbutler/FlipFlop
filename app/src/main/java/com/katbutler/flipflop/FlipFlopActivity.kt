@@ -62,6 +62,10 @@ class FlipFlopActivity : AppCompatActivity() {
             layoutManager = viewManager
         }
 
+        fab.setOnClickListener {
+            showPlayer()
+        }
+
         selected_playlist_left_name.ellipsize = TextUtils.TruncateAt.END
         selected_playlist_right_name.ellipsize = TextUtils.TruncateAt.END
         selected_playlist_left_name.setSingleLine()
@@ -93,16 +97,20 @@ class FlipFlopActivity : AppCompatActivity() {
 
     private fun populatePlaylistsRecyclerView(playlists: Playlists) {
         playlistsAdapter = PlaylistsAdapter(playlists) { playlist ->
-            val selectedCount = playlists.items.filter { it.selected }.size
+            try {
+                val selectedCount = playlists.items.filter { it.selected }.size
 
-            if (playlist.selected) {
-                removePlaylistFromPanel(playlist)
-                return@PlaylistsAdapter true
-            } else if (selectedCount < 2) {
-                addPlaylistToPanel(playlist)
-                return@PlaylistsAdapter true
+                if (playlist.selected) {
+                    removePlaylistFromPanel(playlist)
+                    return@PlaylistsAdapter true
+                } else if (selectedCount < 2) {
+                    addPlaylistToPanel(playlist)
+                    return@PlaylistsAdapter true
+                }
+                return@PlaylistsAdapter false
+            } finally {
+                if (selectedPlaylists.count() == 2) fab.show() else fab.hide()
             }
-            return@PlaylistsAdapter false
         }
         playlistsRecyclerView.adapter = playlistsAdapter
     }
@@ -174,6 +182,14 @@ class FlipFlopActivity : AppCompatActivity() {
         startActivity(playerIntent)
     }
 
+    private fun clearSelectedPlaylists() {
+        selectedPlaylists.clear()
+        playlistsAdapter.playlists.items.forEach { it.selected = false }
+        drawPanel()
+        playlistsAdapter.notifyDataSetChanged()
+        fab.hide()
+    }
+
     //region Menu
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         val inflater = menuInflater
@@ -184,8 +200,8 @@ class FlipFlopActivity : AppCompatActivity() {
 
     override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
         menu?.getItem(0)?.let {
-            val s = SpannableString("start")
-            val disabled = selectedPlaylists.count() != 2
+            val s = SpannableString("clear")
+            val disabled = selectedPlaylists.count() < 1
 
             if (disabled) {
                 s.setSpan(ForegroundColorSpan(resources.getColor(lightGreenTextColor)), 0, s.length, 0)
@@ -200,8 +216,8 @@ class FlipFlopActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
-        R.id.action_start -> {
-            showPlayer()
+        R.id.action_clear -> {
+            clearSelectedPlaylists()
             true
         }
 

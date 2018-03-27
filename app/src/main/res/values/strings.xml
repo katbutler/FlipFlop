@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">FlipFlop</string>
     <string name="log_in_with_spotify">Log in with Spotify</string>
+    <string name="action_settings">Settings</string>
 </resources>

@@ -152,7 +152,7 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
     }
 
     private fun togglePlayPauseImage() {
-        val playImage = R.drawable.ic_play_arrow_white_60dp
+        val playImage = R.drawable.ic_play_arrow_secondary_60dp
         val pauseImage = R.drawable.ic_pause_black_24dp
         val playPauseResId = if (player.playbackState.isPlaying) playImage else pauseImage
         play_pause_button.setImageResource(playPauseResId)
