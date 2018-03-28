@@ -12,6 +12,7 @@ import com.bumptech.glide.request.RequestOptions
 import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.katbutler.flipflop.spotifynet.SpotifyNet
 import com.katbutler.flipflop.spotifynet.models.Track
+import com.katbutler.flipflop.spotifynet.models.TrackData
 import com.katbutler.flipflop.spotifynet.models.Tracks
 import com.spotify.sdk.android.player.*
 import kotlinx.android.synthetic.main.activity_player.*
@@ -125,13 +126,13 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
 
         skip_next_button.setOnClickListener {
             if (hasFetched) {
-                player.skipToNext(this)
+                playNextTrack()
             }
         }
 
         skip_previous_button.setOnClickListener {
             if (hasFetched) {
-                player.skipToPrevious(this)
+                playPrevTrack()
             }
         }
 
@@ -185,6 +186,23 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         }
     }
 
+    private fun playNextTrack() {
+        val tracks = playlistTracks[currentPlaylistID]
+        val newHead: List<Track>? = tracks?.items?.dropWhile { it.track.id != currentTrack?.track?.id }?.drop(1)
+        (newHead?.firstOrNull() ?: tracks?.items?.firstOrNull())?.let {
+            playTrack(it)
+        }
+    }
+
+    private fun playPrevTrack() {
+        val tracks = playlistTracks[currentPlaylistID]
+        val reversedItems = tracks?.items?.reversed()
+        val newHead: List<Track>? = reversedItems?.dropWhile { it.track.id != currentTrack?.track?.id }?.drop(1)
+        (newHead?.firstOrNull() ?: reversedItems?.firstOrNull())?.let {
+            playTrack(it)
+        }
+    }
+
     private fun fetchTracks() {
         val userID = SpotifyPrefs.getUserID(this) ?: return
         currentPlaylistID = playlistId1
@@ -217,7 +235,7 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
 
         Toast.makeText(this, err.toString(), Toast.LENGTH_LONG).show()
     }
-    //endregion
+//endregion
 
     //region ConnectionStateCallback methods
     override fun onLoggedOut() {
@@ -245,7 +263,7 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
     override fun onTemporaryError() {
         Log.d(TAG, "temp error")
     }
-    //endregion
+//endregion
 
 
     //region Player.NotificationCallback methods
@@ -260,10 +278,10 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
 //        }
 
         if (playerEvent == PlayerEvent.kSpPlaybackNotifyTrackDelivered) {
-
+            playNextTrack()
         }
 
     }
-    //endregion
+//endregion
 
 }
