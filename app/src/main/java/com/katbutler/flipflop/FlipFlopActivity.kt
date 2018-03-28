@@ -1,9 +1,11 @@
 package com.katbutler.flipflop
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.opengl.Visibility
+import android.net.ConnectivityManager
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.v7.widget.LinearLayoutManager
@@ -23,16 +25,13 @@ import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.katbutler.flipflop.spotifynet.SpotifyNet
 import com.katbutler.flipflop.spotifynet.models.Playlist
 import com.katbutler.flipflop.spotifynet.models.Playlists
-import com.spotify.sdk.android.player.*
-import com.spotify.sdk.android.player.Spotify
 import kotlinx.android.synthetic.main.activity_flip_flop.*
-import kotlinx.android.synthetic.main.activity_flip_flop.view.*
-import kotlinx.android.synthetic.main.playlist_item.view.*
-import android.view.MenuInflater
 import android.text.style.ForegroundColorSpan
 import android.text.SpannableString
+import android.widget.Toast
 import com.katbutler.flipflop.R.color.*
 import com.katbutler.flipflop.spotifynet.UnauthorizedException
+import java.net.UnknownHostException
 
 
 class FlipFlopActivity : AppCompatActivity() {
@@ -46,14 +45,27 @@ class FlipFlopActivity : AppCompatActivity() {
     }
 
     private lateinit var playlistsRecyclerView: RecyclerView
-    private lateinit var playlistsAdapter: PlaylistsAdapter
     private lateinit var viewManager: RecyclerView.LayoutManager
+    private var playlistsAdapter: PlaylistsAdapter? = null
 
     private val selectedPlaylists: MutableList<Playlist> = arrayListOf()
+
+    private val connectivityManager by lazy { getSystemService(ConnectivityManager::class.java) }
+
+    private val connectivityReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                ConnectivityManager.CONNECTIVITY_ACTION -> connectivityChanged(intent)
+            }
+        }
+
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_flip_flop)
+
+        registerReceiver(connectivityReceiver, IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
 
         viewManager = LinearLayoutManager(this)
 
@@ -74,6 +86,11 @@ class FlipFlopActivity : AppCompatActivity() {
         initSpotify()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterReceiver(connectivityReceiver)
+    }
+
     private fun initSpotify() {
         SpotifyPrefs.getAccessToken(this) ?: return LoginActivity.showLoginActivity(this)
 
@@ -91,8 +108,39 @@ class FlipFlopActivity : AppCompatActivity() {
                 },
                 { throwable ->
                     if (throwable is UnauthorizedException) LoginActivity.showLoginActivity(this)
-                    else throwable?.let { throw it }
+                    else if (throwable is UnknownHostException) showNetworkError();
+                    else {
+                        showNetworkError()
+                        Toast.makeText(this, throwable?.message, Toast.LENGTH_LONG).show()
+                    }
                 })
+    }
+
+    private fun showNetworkError() {
+        no_connection_layout.visibility = View.VISIBLE
+        selected_playlists_panel.visibility = View.GONE
+        playlistsRecyclerView.visibility = View.GONE
+        fab.visibility = View.GONE
+    }
+
+    private fun hideNetworkError() {
+        no_connection_layout.visibility = View.GONE
+        selected_playlists_panel.visibility = View.VISIBLE
+        playlistsRecyclerView.visibility = View.VISIBLE
+        maybeShowFab()
+    }
+
+    private fun connectivityChanged(intent: Intent) {
+        Log.d(TAG, "connectivityChanged")
+        val network = connectivityManager.activeNetworkInfo
+        if (network?.isAvailable == true) {
+            hideNetworkError()
+            if (playlistsAdapter?.playlists == null || playlistsAdapter?.playlists?.total == 0) {
+                fetchSpotifyData()
+            }
+        } else {
+            showNetworkError()
+        }
     }
 
     private fun populatePlaylistsRecyclerView(playlists: Playlists) {
@@ -109,10 +157,14 @@ class FlipFlopActivity : AppCompatActivity() {
                 }
                 return@PlaylistsAdapter false
             } finally {
-                if (selectedPlaylists.count() == 2) fab.show() else fab.hide()
+                maybeShowFab()
             }
         }
         playlistsRecyclerView.adapter = playlistsAdapter
+    }
+
+    private fun maybeShowFab() {
+        if (selectedPlaylists.count() == 2) fab.show() else fab.hide()
     }
 
     private fun addPlaylistToPanel(playlist: Playlist) {
@@ -184,9 +236,9 @@ class FlipFlopActivity : AppCompatActivity() {
 
     private fun clearSelectedPlaylists() {
         selectedPlaylists.clear()
-        playlistsAdapter.playlists.items.forEach { it.selected = false }
+        playlistsAdapter?.playlists?.items?.forEach { it.selected = false }
         drawPanel()
-        playlistsAdapter.notifyDataSetChanged()
+        playlistsAdapter?.notifyDataSetChanged()
         fab.hide()
     }
 
