@@ -19,6 +19,7 @@ data class Tracks(
 
 data class TrackData(
         val album: Album,
+        val artists: List<Artist>,
         val href: String,
         val id: String,
         val name: String,
@@ -32,4 +33,12 @@ data class Album(
         val name: String,
         val uri: String,
         val images: List<SpotifyImage>
+)
+
+data class Artist(
+        val name: String,
+        val id: String,
+        val href: String,
+        val uri: String,
+        val type: String
 )

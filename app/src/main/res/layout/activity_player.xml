@@ -11,6 +11,7 @@
         android:layout_height="0dp"
         android:cropToPadding="false"
         android:scaleType="centerCrop"
+        android:foreground="@drawable/track_info_bg_shape"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -79,5 +80,24 @@
         android:src="@drawable/ic_swap_secondary_24dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/track_info_textview"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:background="#9FFF"
+        android:ellipsize="marquee"
+        android:marqueeRepeatLimit="marquee_forever"
+        android:padding="5dp"
+        android:scrollHorizontally="true"
+        android:textAlignment="center"
+        android:textColor="@color/darkColorText"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/seekBar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
 </android.support.constraint.ConstraintLayout>

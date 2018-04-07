@@ -94,6 +94,8 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
     }
 
     private fun initView() {
+        track_info_textview.isSelected = true
+        track_info_textview.setHorizontallyScrolling(true)
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onStartTrackingTouch(p0: SeekBar?) {
 
@@ -172,6 +174,8 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         seekBar.progress = 0
 
         this.runOnUiThread {
+            val trackInfo = "${track.track.name} - ${track.track.artists.joinToString(", ") { it.name }}"
+            track_info_textview.text = trackInfo
             Glide.with(this)
                     .load(track.track.album.images.first { it.height > 500 }.url)
                     .transition(DrawableTransitionOptions.withCrossFade())
