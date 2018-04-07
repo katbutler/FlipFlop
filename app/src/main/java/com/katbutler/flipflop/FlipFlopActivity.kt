@@ -100,23 +100,22 @@ class FlipFlopActivity : AppCompatActivity() {
     private fun fetchSpotifyData() {
         spotifyNet.getCurrentUserProfile({ userProfile ->
             SpotifyPrefs.saveCurrentUserID(this, userProfile.id)
-        })
+            if (userProfile.product != "premium") {
+                showError(R.string.need_premium_account, R.drawable.ic_need_premium_grey_60dp)
+                try {
+                    unregisterReceiver(connectivityReceiver)
+                } catch (e: Exception) {
+                }
 
-        spotifyNet.getPlaylistsForCurrentUser(
-                { playlists ->
-                    populatePlaylistsRecyclerView(playlists)
-                },
-                { throwable ->
-                    if (throwable is UnauthorizedException) LoginActivity.showLoginActivity(this)
-                    else if (throwable is UnknownHostException) showNetworkError();
-                    else {
-                        showNetworkError()
-                        Toast.makeText(this, throwable?.message, Toast.LENGTH_LONG).show()
-                    }
-                })
+                return@getCurrentUserProfile
+            }
+            updatePlaylists()
+        })
     }
 
-    private fun showNetworkError() {
+    private fun showError(errorStringID: Int = R.string.could_not_fetch_playlists, errorImageID: Int = R.drawable.ic_cloud_off_grey_60dp) {
+        error_text_view.text = getString(errorStringID)
+        error_icon_image.setImageResource(errorImageID)
         no_connection_layout.visibility = View.VISIBLE
         selected_playlists_panel.visibility = View.GONE
         playlistsRecyclerView.visibility = View.GONE
@@ -130,6 +129,21 @@ class FlipFlopActivity : AppCompatActivity() {
         maybeShowFab()
     }
 
+    private fun updatePlaylists() {
+        spotifyNet.getPlaylistsForCurrentUser(
+                { playlists ->
+                    populatePlaylistsRecyclerView(playlists)
+                },
+                { throwable ->
+                    if (throwable is UnauthorizedException) LoginActivity.showLoginActivity(this)
+                    else if (throwable is UnknownHostException) showError();
+                    else {
+                        showError()
+                        Toast.makeText(this, throwable?.message, Toast.LENGTH_LONG).show()
+                    }
+                })
+    }
+
     private fun connectivityChanged(intent: Intent) {
         Log.d(TAG, "connectivityChanged")
         val network = connectivityManager.activeNetworkInfo
@@ -139,7 +153,7 @@ class FlipFlopActivity : AppCompatActivity() {
                 fetchSpotifyData()
             }
         } else {
-            showNetworkError()
+            showError()
         }
     }
 

@@ -8,5 +8,8 @@ import com.google.gson.annotations.SerializedName
 data class UserProfile(
         val id: String,
         @SerializedName("display_name") val displayName: String,
-        val images: List<SpotifyImage>
+        val images: List<SpotifyImage>,
+        val product: String,
+        val type: String,
+        val uri: String
 )

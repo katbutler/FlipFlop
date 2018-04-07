@@ -38,13 +38,14 @@
             android:orientation="vertical">
 
             <ImageView
-                android:id="@+id/no_network_cloud"
+                android:id="@+id/error_icon_image"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_cloud_off_grey_60dp"
                 android:layout_gravity="center"/>
 
             <TextView
+                android:id="@+id/error_text_view"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:paddingTop="10dp"

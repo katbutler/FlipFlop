@@ -11,4 +11,5 @@
     <color name="darkColorText">#333333</color>
     <color name="lightTextColor">#b3b3b3</color>
     <color name="lightGreenTextColor">#a2c6a3</color>
+    <color name="grey_icon_color">#a3a3a3</color>
 </resources>
