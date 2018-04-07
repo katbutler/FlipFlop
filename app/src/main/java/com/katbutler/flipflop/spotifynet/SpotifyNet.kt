@@ -50,18 +50,20 @@ class SpotifyNet(val context: Context) {
     }
 
     //region API
-    fun getCurrentUserProfile(callback: (UserProfile) -> Unit) {
+    fun getCurrentUserProfile(onSuccess: (UserProfile) -> Unit, onError: (Throwable?) -> Unit) {
         userService.getMe().enqueue(object : Callback<UserProfile> {
             override fun onResponse(call: Call<UserProfile>, response: Response<UserProfile>) {
                 if (response.isSuccessful) {
                     response.body()?.let {
-                        callback(it)
+                        onSuccess(it)
                     }
                 }
             }
 
             override fun onFailure(call: Call<UserProfile>?, t: Throwable?) {
                 Log.e(TAG, "getCurrentUserProfile onFailure")
+                t?.printStackTrace()
+                onError(t)
             }
         })
     }

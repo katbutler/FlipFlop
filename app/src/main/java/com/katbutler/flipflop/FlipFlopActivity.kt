@@ -110,7 +110,20 @@ class FlipFlopActivity : AppCompatActivity() {
                 return@getCurrentUserProfile
             }
             updatePlaylists()
-        })
+        }, this::handleNetworkError)
+    }
+
+    private fun handleNetworkError(throwable: Throwable?) {
+        when (throwable) {
+            is UnauthorizedException -> LoginActivity.showLoginActivity(this)
+
+            is UnknownHostException -> showError()
+
+            else -> {
+                showError()
+                Toast.makeText(this, throwable?.message, Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun showError(errorStringID: Int = R.string.could_not_fetch_playlists, errorImageID: Int = R.drawable.ic_cloud_off_grey_60dp) {
@@ -134,14 +147,7 @@ class FlipFlopActivity : AppCompatActivity() {
                 { playlists ->
                     populatePlaylistsRecyclerView(playlists)
                 },
-                { throwable ->
-                    if (throwable is UnauthorizedException) LoginActivity.showLoginActivity(this)
-                    else if (throwable is UnknownHostException) showError();
-                    else {
-                        showError()
-                        Toast.makeText(this, throwable?.message, Toast.LENGTH_LONG).show()
-                    }
-                })
+                this::handleNetworkError)
     }
 
     private fun connectivityChanged(intent: Intent) {

@@ -1,6 +1,5 @@
 package com.katbutler.flipflop
 
-import android.graphics.drawable.Drawable
 import android.os.*
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
@@ -12,7 +11,6 @@ import com.bumptech.glide.request.RequestOptions
 import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.katbutler.flipflop.spotifynet.SpotifyNet
 import com.katbutler.flipflop.spotifynet.models.Track
-import com.katbutler.flipflop.spotifynet.models.TrackData
 import com.katbutler.flipflop.spotifynet.models.Tracks
 import com.spotify.sdk.android.player.*
 import kotlinx.android.synthetic.main.activity_player.*
@@ -114,7 +112,6 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         })
 
         play_pause_button.setOnClickListener {
-            togglePlayPauseImage()
             if (hasFetched) {
                 if (player.playbackState.isPlaying) {
                     player.pause(this)
@@ -152,18 +149,19 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         }
     }
 
-    private fun togglePlayPauseImage() {
-        val playImage = R.drawable.ic_play_arrow_secondary_60dp
-        val pauseImage = R.drawable.ic_pause_black_24dp
-        val playPauseResId = if (player.playbackState.isPlaying) playImage else pauseImage
-        play_pause_button.setImageResource(playPauseResId)
+    private fun updatePlayPauseImage() {
+        runOnUiThread {
+            val playImage = R.drawable.ic_play_arrow_secondary_60dp
+            val pauseImage = R.drawable.ic_pause_black_24dp
+            val playPauseResId = if (player.playbackState.isPlaying) pauseImage else playImage
+            play_pause_button.setImageResource(playPauseResId)
+        }
     }
 
     private fun initFirstTrack() {
         handler.sendEmptyMessageDelayed(0xFEED, 1000)
         playlist1Tracks.items.firstOrNull()?.let {
             playTrack(it)
-            togglePlayPauseImage()
         }
     }
 
@@ -280,7 +278,7 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         if (playerEvent == PlayerEvent.kSpPlaybackNotifyTrackDelivered) {
             playNextTrack()
         }
-
+        updatePlayPauseImage()
     }
 //endregion
 
