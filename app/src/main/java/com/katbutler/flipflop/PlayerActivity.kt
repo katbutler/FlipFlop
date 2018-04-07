@@ -171,11 +171,8 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
         seekBar.max = track.track.durationMs
         seekBar.progress = 0
 
-        val options = RequestOptions().placeholder(R.drawable.flipflop_icon_grey_large)
-
         this.runOnUiThread {
             Glide.with(this)
-                    .setDefaultRequestOptions(options)
                     .load(track.track.album.images.first { it.height > 500 }.url)
                     .transition(DrawableTransitionOptions.withCrossFade())
                     .into(trackArtImageView)
@@ -233,7 +230,7 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
 
         Toast.makeText(this, err.toString(), Toast.LENGTH_LONG).show()
     }
-//endregion
+    //endregion
 
     //region ConnectionStateCallback methods
     override fun onLoggedOut() {
@@ -261,7 +258,7 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
     override fun onTemporaryError() {
         Log.d(TAG, "temp error")
     }
-//endregion
+    //endregion
 
 
     //region Player.NotificationCallback methods

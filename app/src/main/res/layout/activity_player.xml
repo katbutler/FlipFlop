@@ -37,7 +37,7 @@
         android:layout_marginBottom="32dp"
         android:scaleType="fitCenter"
         android:padding="5dp"
-        android:src="@drawable/ic_play_arrow_white_60dp"
+        android:src="@drawable/ic_pause_black_24dp"
         app:layout_constraintBottom_toBottomOf="parent"
         android:background="@drawable/play_pause_bg_shape"
         app:layout_constraintEnd_toStartOf="@+id/skip_next_button"

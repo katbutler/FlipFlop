@@ -31,6 +31,7 @@ import android.text.SpannableString
 import android.widget.Toast
 import com.katbutler.flipflop.R.color.*
 import com.katbutler.flipflop.spotifynet.UnauthorizedException
+import com.katbutler.flipflop.spotifynet.UnknownSpotifyException
 import java.net.UnknownHostException
 
 
@@ -114,6 +115,7 @@ class FlipFlopActivity : AppCompatActivity() {
     }
 
     private fun handleNetworkError(throwable: Throwable?) {
+        Log.w(TAG, "handleNetworkError ${throwable?.message}")
         when (throwable) {
             is UnauthorizedException -> LoginActivity.showLoginActivity(this)
 

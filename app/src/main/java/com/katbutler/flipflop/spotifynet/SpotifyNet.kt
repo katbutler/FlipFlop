@@ -56,7 +56,12 @@ class SpotifyNet(val context: Context) {
                 if (response.isSuccessful) {
                     response.body()?.let {
                         onSuccess(it)
+                        return
                     }
+                }
+                when (response.code()) {
+                    401 -> onError(UnauthorizedException("Unauthorized"))
+                    else -> onError(UnknownSpotifyException("Unknown Error: ${response.code()} ${response.message()}"))
                 }
             }
 
@@ -80,7 +85,7 @@ class SpotifyNet(val context: Context) {
 
                 when (response.code()) {
                     401 -> onError(UnauthorizedException("Unauthorized"))
-                    else -> onError(UnknownSpotifyException("Unknown Error"))
+                    else -> onError(UnknownSpotifyException("Unknown Error: ${response.code()} ${response.message()}"))
                 }
             }
 
