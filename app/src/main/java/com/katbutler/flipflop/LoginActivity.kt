@@ -22,9 +22,12 @@ class LoginActivity : AppCompatActivity() {
 
     companion object {
         const val TAG = "LoginActivity"
+        const val EXTRA_IS_SWITCH_ACCOUNT = "isSwitchAccount"
 
-        fun showLoginActivity(activity: Activity) {
-            val loginIntent = Intent(activity, com.katbutler.flipflop.LoginActivity::class.java)
+        fun showLoginActivity(activity: Activity, isSwitchAccount: Boolean = false) {
+            val loginIntent = Intent(activity, com.katbutler.flipflop.LoginActivity::class.java).apply {
+                putExtra(EXTRA_IS_SWITCH_ACCOUNT, isSwitchAccount)
+            }
 
             activity.startActivity(loginIntent)
             activity.finish()
@@ -40,6 +43,10 @@ class LoginActivity : AppCompatActivity() {
         setContentView(R.layout.activity_login)
 
         Log.d(TAG, "onCreate")
+
+        if (intent.getBooleanExtra(EXTRA_IS_SWITCH_ACCOUNT, false)) {
+            spotifyLogin()
+        }
 
         loginButton.setOnClickListener {
             spotifyLogin()
