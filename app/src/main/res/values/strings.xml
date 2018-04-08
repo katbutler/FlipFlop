@@ -7,4 +7,5 @@
     <string name="need_premium_account">You need a premium account to stream music on mobile</string>
     <string name="switch_account_title">Switch Account</string>
     <string name="switch_account_summary">Switch current logged in Spotify account</string>
+    <string name="media_notification_channel_name">Media Playback</string>
 </resources>

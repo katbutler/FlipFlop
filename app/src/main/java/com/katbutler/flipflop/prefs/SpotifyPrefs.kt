@@ -2,6 +2,7 @@ package com.katbutler.flipflop.prefs
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.support.v4.media.session.MediaSessionCompat
 
 /**
  * Created by kat on 2018-03-24.
@@ -10,6 +11,7 @@ object SpotifyPrefs {
     private const val SPOTIFY_TOKEN_KEY = "spotify_token"
     private const val SPOTIFY_USER_ID_KEY = "spotify_user_id"
     private const val PREF_KEY = "spotify_prefs"
+    private const val MEDIA_SESSION_TOKEN_KEY = "media_session_token"
 
     private fun getPrefs(context: Context): SharedPreferences =
             context.getSharedPreferences(PREF_KEY, Context.MODE_PRIVATE) ?:

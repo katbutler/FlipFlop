@@ -1,6 +1,9 @@
 package com.katbutler.flipflop
 
+import android.content.ComponentName
 import android.os.*
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.session.MediaControllerCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.widget.SeekBar
@@ -9,6 +12,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestOptions
 import com.katbutler.flipflop.prefs.SpotifyPrefs
+import com.katbutler.flipflop.services.BackgroundAudioService
 import com.katbutler.flipflop.spotifynet.SpotifyNet
 import com.katbutler.flipflop.spotifynet.models.Track
 import com.katbutler.flipflop.spotifynet.models.Tracks
@@ -23,6 +27,8 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
     companion object {
         const val TAG = "PlayerActivity"
     }
+
+    private lateinit var mediaBrowser: MediaBrowserCompat
 
     val thread by lazy {
         val thread = HandlerThread("Queuer")
@@ -71,6 +77,7 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
 
         initView()
         fetchTracks()
+        connectMediaBrowser()
 
         val accessToken = SpotifyPrefs.getAccessToken(this) ?: return LoginActivity.showLoginActivity(this)
 
@@ -90,7 +97,40 @@ class PlayerActivity : AppCompatActivity(), ConnectionStateCallback, Player.Noti
 
     override fun onDestroy() {
         Spotify.destroyPlayer(this)
+        mediaBrowser.disconnect()
         super.onDestroy()
+    }
+
+    private fun connectMediaBrowser() {
+        mediaBrowser = MediaBrowserCompat(this,
+                ComponentName(this, BackgroundAudioService::class.java),
+                object: MediaBrowserCompat.ConnectionCallback() {
+                    override fun onConnected() {
+                        Log.d(TAG, "onConnectionConnected")
+                        try {
+                            val sessionToken = mediaBrowser.sessionToken
+                            val controller = MediaControllerCompat(this@PlayerActivity, sessionToken)
+
+                            MediaControllerCompat.setMediaController(this@PlayerActivity, controller)
+                        } catch (remoteException: RemoteException) {
+                            Log.e(TAG, remoteException.message)
+                            remoteException.printStackTrace()
+                        }
+                    }
+
+                    override fun onConnectionSuspended() {
+                        super.onConnectionSuspended()
+                        Log.d(TAG, "onConnectionSuspended")
+                    }
+
+                    override fun onConnectionFailed() {
+                        super.onConnectionFailed()
+                        Log.d(TAG, "onConnectionFailed")
+                    }
+                }, null)
+
+        mediaBrowser.connect()
+        Log.d(TAG, "after connected")
     }
 
     private fun initView() {
