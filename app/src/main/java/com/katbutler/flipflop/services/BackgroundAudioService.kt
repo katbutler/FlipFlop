@@ -14,8 +14,10 @@ import android.support.v4.media.session.MediaButtonReceiver
 import android.os.PowerManager
 import android.content.ComponentName
 import android.content.IntentFilter
+import android.graphics.BitmapFactory
 import android.media.AudioFocusRequest
 import android.os.Build
+import android.os.ResultReceiver
 import android.support.v4.media.app.NotificationCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
@@ -23,7 +25,9 @@ import android.support.v4.app.NotificationManagerCompat
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaBrowserServiceCompat
 import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM_ART
 import android.text.TextUtils
+import android.view.KeyEvent
 import com.katbutler.flipflop.R
 import com.katbutler.flipflop.helpers.MediaStyleHelper
 
@@ -53,7 +57,54 @@ class BackgroundAudioService : MediaBrowserServiceCompat(), MediaPlayer.OnComple
         }
     }
 
+    private val mediaButtonReceiver = MediaButtonReceiver()
+
     private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
+
+        override fun onPrepare() {
+            Log.d(TAG, "MediaSession - onPrepare")
+            super.onPrepare()
+        }
+
+        override fun onCommand(command: String?, extras: Bundle?, cb: ResultReceiver?) {
+            Log.d(TAG, "MediaSession - onCommand")
+            super.onCommand(command, extras, cb)
+        }
+
+        override fun onMediaButtonEvent(mediaButtonEvent: Intent?): Boolean {
+            Log.d(TAG, "MediaSession- onMediaButtonEvent")
+            val keyEvent = mediaButtonEvent?.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
+            when (keyEvent?.keyCode) {
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { // SWAP
+
+                }
+
+                KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                    showPlayingNotification(true)
+                }
+
+                KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                    showPlayingNotification(false)
+                }
+
+                KeyEvent.KEYCODE_MEDIA_NEXT-> {
+
+                }
+
+                KeyEvent.KEYCODE_MEDIA_PREVIOUS-> {
+
+                }
+
+//                KeyEvent.KEYCODE_SEEK-> {
+//
+//                }
+                else -> {
+
+                }
+            }
+
+            return super.onMediaButtonEvent(mediaButtonEvent)
+        }
 
         override fun onPlay() {
             Log.d(TAG, "MediaSession - onPlay")
@@ -71,16 +122,24 @@ class BackgroundAudioService : MediaBrowserServiceCompat(), MediaPlayer.OnComple
 
         override fun onPause() {
             Log.d(TAG, "MediaSession - onPause")
+            setMediaPlaybackState(PlaybackStateCompat.STATE_PAUSED)
+            mediaPlayer.pause()
         }
 
         override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
             Log.d(TAG, "MediaSession - onPlayFromMediaId")
+        }
+
+        override fun onSkipToNext() {
+            Log.d(TAG, "MediaSession - onSkipToNext")
         }
     }
 
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "onCreate")
+
+        registerReceiver(mediaButtonReceiver, IntentFilter(Intent.ACTION_MEDIA_BUTTON))
 
         initMediaPlayer()
         initMediaSession()
@@ -89,13 +148,23 @@ class BackgroundAudioService : MediaBrowserServiceCompat(), MediaPlayer.OnComple
         showPlayingNotification()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            unregisterReceiver(mediaButtonReceiver)
+            unregisterReceiver(noisyReceiver)
+        } catch (e: Exception) {
+
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand")
         MediaButtonReceiver.handleIntent(mediaSessionCompat, intent)
         return super.onStartCommand(intent, flags, startId)
     }
 
-    override fun onCompletion(p0: MediaPlayer?) {
+    override fun onCompletion(mediaPlayer: MediaPlayer) {
         Log.d(TAG, "onCompletion")
     }
 
@@ -149,7 +218,11 @@ class BackgroundAudioService : MediaBrowserServiceCompat(), MediaPlayer.OnComple
         mediaSessionCompat.setCallback(mediaSessionCallback)
         mediaSessionCompat.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
         mediaSessionCompat.isActive = true
+
+        val art = BitmapFactory.decodeResource(resources, R.drawable.spotify_logo_black)
+
         val metadata = MediaMetadataCompat.Builder()
+                .putBitmap(METADATA_KEY_ALBUM_ART, art)
                 .putText(MediaMetadataCompat.METADATA_KEY_ALBUM, "Test")
                 .putText(MediaMetadataCompat.METADATA_KEY_ARTIST, "katbut")
                 .putText(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, "Title")
@@ -201,15 +274,28 @@ class BackgroundAudioService : MediaBrowserServiceCompat(), MediaPlayer.OnComple
         mediaSessionCompat.setPlaybackState(playbackStateBuilder.build())
     }
 
-    private fun showPlayingNotification() {
+    private fun showPlayingNotification(isPlaying: Boolean = true) {
         Log.d(TAG, "showPlayingNotification")
         val notificationBuilder = MediaStyleHelper.from(this@BackgroundAudioService, mediaSessionCompat)
                 .addAction(android.support.v4.app.NotificationCompat.Action(
-                        R.drawable.ic_pause_black_24dp,
-                        "Pause",
+                        R.drawable.ic_skip_previous_black_24dp,
+                        "Prev",
+                        MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)))
+                .addAction(android.support.v4.app.NotificationCompat.Action(
+                        if (isPlaying) R.drawable.ic_pause_black_24dp else R.drawable.ic_play_arrow_black_24dp,
+                        if (isPlaying) "Pause" else "Play",
+                        MediaButtonReceiver.buildMediaButtonPendingIntent(this,
+                                if (isPlaying) PlaybackStateCompat.ACTION_PAUSE else PlaybackStateCompat.ACTION_PLAY)))
+                .addAction(android.support.v4.app.NotificationCompat.Action(
+                        R.drawable.ic_swap_secondary_24dp,
+                        "Swap",
                         MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_PLAY_PAUSE)))
+                .addAction(android.support.v4.app.NotificationCompat.Action(
+                        R.drawable.ic_skip_next_black_24dp,
+                        "Next",
+                        MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_NEXT)))
                 .setStyle(NotificationCompat.MediaStyle()
-                        .setShowActionsInCompactView(0)
+                        .setShowActionsInCompactView(2)
                         .setMediaSession(mediaSessionCompat.sessionToken))
                 .setSmallIcon(R.drawable.filpflop_cutout_svg)
 
