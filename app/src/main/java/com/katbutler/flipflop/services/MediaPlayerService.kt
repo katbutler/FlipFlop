@@ -9,33 +9,27 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.media.AudioAttributes
 import android.support.v4.media.session.MediaSessionCompat
-import android.os.Bundle
 import android.support.v4.media.session.MediaButtonReceiver
-import android.os.PowerManager
 import android.content.ComponentName
 import android.content.IntentFilter
 import android.graphics.BitmapFactory
 import android.media.AudioFocusRequest
-import android.os.Build
-import android.os.ResultReceiver
+import android.os.*
 import android.support.v4.media.app.NotificationCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.support.v4.app.NotificationManagerCompat
-import android.support.v4.media.MediaBrowserCompat
-import android.support.v4.media.MediaBrowserServiceCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM_ART
-import android.text.TextUtils
 import android.view.KeyEvent
 import com.katbutler.flipflop.R
 import com.katbutler.flipflop.helpers.MediaStyleHelper
 
 
-class BackgroundAudioService : MediaBrowserServiceCompat(), MediaPlayer.OnCompletionListener, AudioManager.OnAudioFocusChangeListener {
+class MediaPlayerService : Service(), MediaPlayer.OnCompletionListener, AudioManager.OnAudioFocusChangeListener {
 
     companion object {
-        const val TAG = "BackgroundAudioService"
+        const val TAG = "MediaPlayerService"
         const val MEDIA_PLAYBACK_CHANNEL_ID = "com.katbutler.flipflop.media_playback"
         const val MEDIA_PLAYBACK_NOTIFICATION_ID = 0xEEEE
     }
@@ -110,7 +104,7 @@ class BackgroundAudioService : MediaBrowserServiceCompat(), MediaPlayer.OnComple
             Log.d(TAG, "MediaSession - onPlay")
 
             if (!successfullyRetrievedAudioFocus()) {
-                Log.d("BackgroundAudioService", "Could not retrieve audio focus")
+                Log.d("MediaPlayerService", "Could not retrieve audio focus")
                 return
             }
 
@@ -147,6 +141,8 @@ class BackgroundAudioService : MediaBrowserServiceCompat(), MediaPlayer.OnComple
 
         showPlayingNotification()
     }
+
+    override fun onBind(intent: Intent?): IBinder = mediaPlayerBinding
 
     override fun onDestroy() {
         super.onDestroy()
@@ -191,17 +187,6 @@ class BackgroundAudioService : MediaBrowserServiceCompat(), MediaPlayer.OnComple
         }
     }
 
-    override fun onLoadChildren(parentId: String, result: Result<MutableList<MediaBrowserCompat.MediaItem>>) {
-        result.sendResult(null)
-    }
-
-    override fun onGetRoot(clientPackageName: String, clientUid: Int, rootHints: Bundle?): BrowserRoot? {
-        if (TextUtils.equals(clientPackageName, packageName))
-            return BrowserRoot(getString(R.string.app_name), null)
-
-        return null
-    }
-
     private fun initMediaPlayer() {
         Log.d(TAG, "initMediaPlayer")
         mediaPlayer = MediaPlayer()
@@ -233,8 +218,6 @@ class BackgroundAudioService : MediaBrowserServiceCompat(), MediaPlayer.OnComple
         mediaButtonIntent.setClass(this, MediaButtonReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(this, 0, mediaButtonIntent, 0)
         mediaSessionCompat.setMediaButtonReceiver(pendingIntent)
-
-        sessionToken = mediaSessionCompat.sessionToken
     }
 
     private fun initNoisyReceiver() {
@@ -276,7 +259,7 @@ class BackgroundAudioService : MediaBrowserServiceCompat(), MediaPlayer.OnComple
 
     private fun showPlayingNotification(isPlaying: Boolean = true) {
         Log.d(TAG, "showPlayingNotification")
-        val notificationBuilder = MediaStyleHelper.from(this@BackgroundAudioService, mediaSessionCompat)
+        val notificationBuilder = MediaStyleHelper.from(this@MediaPlayerService, mediaSessionCompat)
                 .addAction(android.support.v4.app.NotificationCompat.Action(
                         R.drawable.ic_skip_previous_black_24dp,
                         "Prev",
@@ -316,6 +299,13 @@ class BackgroundAudioService : MediaBrowserServiceCompat(), MediaPlayer.OnComple
         }
 
 
-        NotificationManagerCompat.from(this@BackgroundAudioService).notify(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
+        NotificationManagerCompat.from(this@MediaPlayerService).notify(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
+    }
+
+    private val mediaPlayerBinding = object : IMediaPlayerService.Stub() {
+        override fun prepare(playlistID1: String?, playlistID2: String?) {
+            Log.d(TAG, "be prepared")
+        }
+
     }
 }

@@ -61,7 +61,7 @@
         </activity>
 
         <service
-            android:name=".services.BackgroundAudioService"
+            android:name=".services.MediaPlayerService"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
