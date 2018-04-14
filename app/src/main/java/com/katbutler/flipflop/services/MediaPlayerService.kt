@@ -35,6 +35,7 @@ import com.katbutler.flipflop.spotifynet.SpotifyNet
 import com.katbutler.flipflop.spotifynet.models.Track
 import com.katbutler.flipflop.spotifynet.models.Tracks
 import com.spotify.sdk.android.player.*
+import java.net.URL
 
 data class MediaPlayerServiceException(override val message: String) : Exception()
 
@@ -85,6 +86,7 @@ class MediaPlayerService : Service(),
                         handler.sendEmptyMessageDelayed(0xFEED, 1000)
                     }
                     msg?.what == 0xDEAF -> initFirstTrack()
+                    msg?.what == 0xABBA -> updateNotificationMetadata()
                     else -> {
                         Log.w(TAG, "Unknown message what ${msg?.what}")
                     }
@@ -126,23 +128,25 @@ class MediaPlayerService : Service(),
             val keyEvent = mediaButtonEvent?.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
             when (keyEvent?.keyCode) {
                 KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { // SWAP
-
+                    mediaPlayerBinding.swap()
                 }
 
                 KeyEvent.KEYCODE_MEDIA_PLAY -> {
                     showPlayingNotification(true)
+                    mediaPlayerBinding.playPause()
                 }
 
                 KeyEvent.KEYCODE_MEDIA_PAUSE -> {
                     showPlayingNotification(false)
+                    mediaPlayerBinding.playPause()
                 }
 
                 KeyEvent.KEYCODE_MEDIA_NEXT-> {
-
+                    mediaPlayerBinding.skipToNext()
                 }
 
                 KeyEvent.KEYCODE_MEDIA_PREVIOUS-> {
-
+                    mediaPlayerBinding.skipToPrevious()
                 }
 
 //                KeyEvent.KEYCODE_SEEK-> {
@@ -260,6 +264,7 @@ class MediaPlayerService : Service(),
         mediaSessionCompat.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
         mediaSessionCompat.isActive = true
 
+
         val art = BitmapFactory.decodeResource(resources, R.drawable.spotify_logo_black)
 
         val metadata = MediaMetadataCompat.Builder()
@@ -269,6 +274,7 @@ class MediaPlayerService : Service(),
                 .putText(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, "Title")
                 .build()
         mediaSessionCompat.setMetadata(metadata)
+
 
         val mediaButtonIntent = Intent(Intent.ACTION_MEDIA_BUTTON)
         mediaButtonIntent.setClass(this, MediaButtonReceiver::class.java)
@@ -355,7 +361,9 @@ class MediaPlayerService : Service(),
         }
 
 
-        NotificationManagerCompat.from(this@MediaPlayerService).notify(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
+        this.startForeground(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
+
+//        NotificationManagerCompat.from(this@MediaPlayerService).notify(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
     }
 
     private fun initFirstTrack() {
@@ -372,6 +380,29 @@ class MediaPlayerService : Service(),
         notifyUpdateProgressChanged(0, track.track.durationMs);
 
         notifyOnTrackChanged(track)
+
+        handler.sendEmptyMessage(0xABBA)
+    }
+
+    private fun updateNotificationMetadata() {
+        if (mediaSessionCompat == null) return
+        val track = currentTrack?.track ?: return
+
+        val albumArtImage = track.album.images.firstOrNull()
+
+        val art = albumArtImage?.let {
+            BitmapFactory.decodeStream(URL(albumArtImage.url).openStream())
+        }
+
+        val metadata = MediaMetadataCompat.Builder()
+                .putBitmap(METADATA_KEY_ALBUM_ART, art)
+                .putText(MediaMetadataCompat.METADATA_KEY_ALBUM, track.album.name)
+                .putText(MediaMetadataCompat.METADATA_KEY_ARTIST, track.artists.joinToString { it.name })
+                .putText(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, track.album.name)
+                .build()
+        mediaSessionCompat.setMetadata(metadata)
+
+        showPlayingNotification(mediaPlayerBinding.isPlaying)
     }
 
     private fun playNextTrack() {
