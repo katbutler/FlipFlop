@@ -28,7 +28,41 @@ class MediaPlayer(val context: Context, onConnected: (MediaPlayer) -> Unit) {
         return context.bindService(service, mediaServiceConnection, Context.BIND_AUTO_CREATE)
     }
 
-    fun prepare(playlistID1: String, playlistID2: String) {
-        mediaPlayerService?.prepare(playlistID1, playlistID2)
+    fun prepare(accessToken: String, playlistID1: String, playlistID2: String) {
+        mediaPlayerService?.prepare(accessToken, playlistID1, playlistID2)
+    }
+
+    fun playPause() {
+        mediaPlayerService?.playPause()
+    }
+
+    fun swap() {
+        mediaPlayerService?.swap()
+    }
+
+    fun skipToNext() {
+        mediaPlayerService?.skipToNext()
+    }
+
+    fun skipToPrevious() {
+        mediaPlayerService?.skipToPrevious()
+    }
+
+    fun seekToPosition(position: Int) {
+        mediaPlayerService?.seekToPosition(position)
+    }
+
+    fun shuffle() {
+        mediaPlayerService?.shuffle()
+    }
+
+    fun isPlaying() = mediaPlayerService?.isPlaying ?: false
+
+    fun registerCallbacks(callback: IMediaPlayerCallback) {
+        mediaPlayerService?.register(callback)
+    }
+
+    fun unregisterCallbacks(callback: IMediaPlayerCallback) {
+        mediaPlayerService?.unregister(callback)
     }
 }

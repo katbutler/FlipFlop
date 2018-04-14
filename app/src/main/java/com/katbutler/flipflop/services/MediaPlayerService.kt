@@ -1,7 +1,10 @@
 package com.katbutler.flipflop.services
 
 
-import android.app.*
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.Intent
 import android.media.AudioManager
 import android.media.MediaPlayer
@@ -22,11 +25,25 @@ import android.support.v4.app.NotificationManagerCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM_ART
 import android.view.KeyEvent
+import android.widget.Toast
+import com.katbutler.flipflop.*
+import com.katbutler.flipflop.BuildConfig
 import com.katbutler.flipflop.R
 import com.katbutler.flipflop.helpers.MediaStyleHelper
+import com.katbutler.flipflop.prefs.SpotifyPrefs
+import com.katbutler.flipflop.spotifynet.SpotifyNet
+import com.katbutler.flipflop.spotifynet.models.Track
+import com.katbutler.flipflop.spotifynet.models.Tracks
+import com.spotify.sdk.android.player.*
 
+data class MediaPlayerServiceException(override val message: String) : Exception()
 
-class MediaPlayerService : Service(), MediaPlayer.OnCompletionListener, AudioManager.OnAudioFocusChangeListener {
+class MediaPlayerService : Service(),
+        MediaPlayer.OnCompletionListener,
+        AudioManager.OnAudioFocusChangeListener,
+        ConnectionStateCallback,
+        Player.NotificationCallback,
+        Player.OperationCallback {
 
     companion object {
         const val TAG = "MediaPlayerService"
@@ -49,6 +66,45 @@ class MediaPlayerService : Service(), MediaPlayer.OnCompletionListener, AudioMan
                 if (it.isPlaying) it.pause()
             }
         }
+    }
+
+    val thread by lazy {
+        val thread = HandlerThread("ProgressUpdater")
+        thread.start()
+        thread
+    }
+    val handler: Handler by lazy {
+        object : Handler(thread.looper) {
+            override fun handleMessage(msg: Message?) {
+                when {
+                    msg?.what == 0xFEED -> {
+                        val progress = player?.playbackState?.positionMs?.toInt()
+                        progress?.let {
+                            notifyUpdateProgressChanged(progress, currentTrack?.track?.durationMs ?: progress)
+                        }
+                        handler.sendEmptyMessageDelayed(0xFEED, 1000)
+                    }
+                    msg?.what == 0xDEAF -> initFirstTrack()
+                    else -> {
+                        Log.w(TAG, "Unknown message what ${msg?.what}")
+                    }
+                }
+                return
+            }
+        }
+    }
+
+    var player: SpotifyPlayer? = null
+    lateinit var currentPlaylistID: String
+    var currentTrack: Track? = null
+    var swapTrack: Track? = null
+    private val playlistTracks = mutableMapOf<String, Tracks>()
+    private lateinit var playlist1Tracks: Tracks
+    private lateinit var playlist2Tracks: Tracks
+    private var hasFetched: Boolean = false
+
+    private val spotifyNet by lazy {
+        SpotifyNet(this)
     }
 
     private val mediaButtonReceiver = MediaButtonReceiver()
@@ -302,10 +358,237 @@ class MediaPlayerService : Service(), MediaPlayer.OnCompletionListener, AudioMan
         NotificationManagerCompat.from(this@MediaPlayerService).notify(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
     }
 
-    private val mediaPlayerBinding = object : IMediaPlayerService.Stub() {
-        override fun prepare(playlistID1: String?, playlistID2: String?) {
-            Log.d(TAG, "be prepared")
+    private fun initFirstTrack() {
+        handler.sendEmptyMessageDelayed(0xFEED, 1000)
+        playlist1Tracks.items.firstOrNull()?.let {
+            playTrack(it)
+        }
+    }
+
+    private fun playTrack(track: Track) {
+        currentTrack = track
+        player?.playUri(this, track.track.uri, 0, 0)
+                ?: throw MediaPlayerServiceException("Player not initialized")
+        notifyUpdateProgressChanged(0, track.track.durationMs);
+
+        notifyOnTrackChanged(track)
+    }
+
+    private fun playNextTrack() {
+        val tracks = playlistTracks[currentPlaylistID]
+        val newHead: List<Track>? = tracks?.items?.dropWhile { it.track.id != currentTrack?.track?.id }?.drop(1)
+        (newHead?.firstOrNull() ?: tracks?.items?.firstOrNull())?.let {
+            playTrack(it)
+        }
+    }
+
+    private fun playPrevTrack() {
+        val tracks = playlistTracks[currentPlaylistID]
+        val reversedItems = tracks?.items?.reversed()
+        val newHead: List<Track>? = reversedItems?.dropWhile { it.track.id != currentTrack?.track?.id }?.drop(1)
+        (newHead?.firstOrNull() ?: reversedItems?.firstOrNull())?.let {
+            playTrack(it)
+        }
+    }
+
+    private fun fetchTracks(playlistID1: String, playlistID2: String) {
+        val userID = SpotifyPrefs.getUserID(this) ?: return
+        currentPlaylistID = playlistID1
+
+        spotifyNet.getPlaylistTracks(userID, playlistID1, { tracks ->
+            playlist1Tracks = tracks
+            hasFetched = true
+            playlistTracks[playlistID1] = tracks
+            handler.sendEmptyMessageDelayed(0xDEAF, 1000)
+        }, { err ->
+            Toast.makeText(this, err.toString(), Toast.LENGTH_LONG).show()
+        })
+
+        spotifyNet.getPlaylistTracks(userID, playlistID2, { tracks ->
+            playlist2Tracks = tracks
+            hasFetched = true
+            playlistTracks[playlistID2] = tracks
+        }, { err ->
+            Toast.makeText(this, err.toString(), Toast.LENGTH_LONG).show()
+        })
+    }
+
+    //region Player.OperationCallback
+    override fun onSuccess() {
+        Log.d(PlayerActivity.TAG, "onSuccess")
+    }
+
+    override fun onError(err: Error?) {
+        Log.d(PlayerActivity.TAG, err.toString())
+
+        Toast.makeText(this, err.toString(), Toast.LENGTH_LONG).show()
+    }
+    //endregion
+
+    //region ConnectionStateCallback methods
+    override fun onLoggedOut() {
+        Log.d(PlayerActivity.TAG, "logged out")
+        notifyOnLoggedOutListeners()
+    }
+
+    override fun onLoggedIn() {
+        Log.d(PlayerActivity.TAG, "logged in")
+    }
+
+    override fun onConnectionMessage(p0: String?) {
+        Log.d(PlayerActivity.TAG, "onConnectionMessage $p0")
+    }
+
+    override fun onLoginFailed(err: Error?) {
+        Log.d(PlayerActivity.TAG, "onLoginFailed $err")
+        notifyLoginFailureListeners()
+    }
+
+    override fun onTemporaryError() {
+        Log.d(PlayerActivity.TAG, "temp error")
+    }
+    //endregion
+
+    //region Player.NotificationCallback methods
+    override fun onPlaybackError(p0: Error?) {
+        Log.d(PlayerActivity.TAG, "$p0")
+    }
+
+    override fun onPlaybackEvent(playerEvent: PlayerEvent?) {
+        Log.d(PlayerActivity.TAG, "$playerEvent")
+//        if (playerEvent?.name == "kSpPlaybackNotifyTrackChanged") {
+//            player.resume(this)
+//        }
+
+        if (playerEvent == PlayerEvent.kSpPlaybackNotifyTrackDelivered) {
+            playNextTrack()
         }
 
+        playerEvent?.let {
+            notifyPlayerEventListeners(it)
+        }
     }
+    //endregion
+
+
+    //region Media Player Binding
+    private val callbackHandlers = mutableListOf<IMediaPlayerCallback>()
+
+    private fun notifyPlayerEventListeners(playerEvent: PlayerEvent) {
+        callbackHandlers.forEach {
+            it.onPlayerEvent(playerEvent.ordinal)
+        }
+    }
+
+    private fun notifyOnLoggedOutListeners() {
+        callbackHandlers.forEach {
+            it.onLoggedOut()
+        }
+    }
+
+    private fun notifyLoginFailureListeners() {
+        callbackHandlers.forEach {
+            it.onLoginFailure()
+        }
+    }
+
+    private fun notifyUpdateProgressChanged(progress: Int, totalProgress: Int) {
+        callbackHandlers.forEach {
+            it.updateProgress(progress, totalProgress)
+        }
+    }
+
+    private fun notifyOnTrackChanged(track: Track) {
+        callbackHandlers.forEach {
+            it.onTrackChanged(track)
+        }
+    }
+
+    private val mediaPlayerBinding = object : IMediaPlayerService.Stub() {
+        override fun prepare(accessToken: String, playlistID1: String, playlistID2: String) {
+            Log.d(TAG, "be prepared")
+
+            fetchTracks(playlistID1, playlistID2)
+
+            val playerConfig = Config(this@MediaPlayerService, accessToken, BuildConfig.CLIENT_ID)
+            Spotify.getPlayer(playerConfig, this, object : SpotifyPlayer.InitializationObserver {
+                override fun onInitialized(spotifyPlayer: SpotifyPlayer) {
+                    player = spotifyPlayer
+                    player?.addConnectionStateCallback(this@MediaPlayerService)
+                    player?.addNotificationCallback(this@MediaPlayerService)
+                }
+
+                override fun onError(throwable: Throwable) {
+                    Log.e(FlipFlopActivity.TAG, "Could not initialize player: " + throwable.message)
+                }
+            })
+        }
+
+        override fun playPause() {
+            Log.d(TAG, "Play pause")
+            if (hasFetched) {
+                if (isPlaying) {
+                    player?.pause(this@MediaPlayerService) ?: throw MediaPlayerServiceException("Player not initialized")
+                } else {
+                    player?.resume(this@MediaPlayerService) ?: throw MediaPlayerServiceException("Player not initialized")
+                }
+            }
+        }
+
+        override fun swap() {
+            Log.d(TAG, "swap")
+            if (hasFetched) {
+                val tempTrack = swapTrack
+                swapTrack = currentTrack
+                currentTrack = tempTrack
+
+
+                currentPlaylistID = playlistTracks.keys.first { it != currentPlaylistID }
+                val tracks = playlistTracks[currentPlaylistID]
+                val nextTrack: Track? = currentTrack ?: tracks?.items?.firstOrNull()
+                nextTrack?.let {
+                    playTrack(it)
+                }
+            }
+        }
+
+        override fun skipToNext() {
+            Log.d(TAG, "skip to next")
+            if (hasFetched) {
+                playNextTrack()
+            }
+        }
+
+        override fun skipToPrevious() {
+            Log.d(TAG, "skip to previous")
+            if (hasFetched) {
+                playPrevTrack()
+            }
+        }
+
+        override fun seekToPosition(position: Int) {
+            Log.d(TAG, "seek to position")
+            currentTrack?.let {
+                player?.seekToPosition(this@MediaPlayerService, position)
+                        ?: throw MediaPlayerServiceException("Player not initialized")
+            }
+        }
+
+        override fun shuffle() {
+            Log.d(TAG, "shuffle")
+        }
+
+        override fun register(callback: IMediaPlayerCallback) {
+            callbackHandlers.add(callback)
+        }
+
+        override fun unregister(callback: IMediaPlayerCallback) {
+            callbackHandlers.remove(callback)
+        }
+
+        override fun isPlaying(): Boolean {
+            return player?.playbackState?.isPlaying ?: false
+        }
+    }
+    //endregion
 }
