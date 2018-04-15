@@ -333,6 +333,24 @@ class MediaPlayerService : Service(),
                 .setSmallIcon(R.drawable.filpflop_cutout_svg)
                 .setAutoCancel(false)
                 .setOngoing(isPlaying)
+                .setContentIntent(
+                        PendingIntent.getActivity(
+                                this,
+                                0x1,
+                                Intent(this, PlayerActivity::class.java).apply {
+                                    putExtra(PlayerActivity.EXTRA_LAUNCHED_FROM_MEDIA_NOTIFICATION, true)
+                                },
+                                PendingIntent.FLAG_UPDATE_CURRENT
+                        )
+                )
+                .setDeleteIntent(
+                        PendingIntent.getService(
+                        this,
+                                0xDE1,
+                                Intent(this, MediaPlayerService::class.java),
+                                PendingIntent.FLAG_UPDATE_CURRENT
+                        )
+                )
 
         val notification = if (Build.VERSION.SDK_INT >= 26) {
             val mediaPlaybackChannel = NotificationChannel(
@@ -350,12 +368,7 @@ class MediaPlayerService : Service(),
         }
 
 
-        if (!isPlaying) {
-            startForeground(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
-            stopForeground(false)
-        } else {
-            startForeground(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
-        }
+        startForeground(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
     }
 
     private fun initFirstTrack() {
@@ -532,6 +545,7 @@ class MediaPlayerService : Service(),
     }
 
     private val mediaPlayerBinding = object : IMediaPlayerService.Stub() {
+
         override fun prepare(accessToken: String, playlistID1: String, playlistID2: String) {
             Log.d(TAG, "be prepared")
 
@@ -570,7 +584,7 @@ class MediaPlayerService : Service(),
             if (hasFetched) {
                 val tempTrack = swapTrack
                 swapTrack = currentTrack
-                currentTrack = tempTrack
+                this@MediaPlayerService.currentTrack = tempTrack
 
 
                 currentPlaylistID = playlistTracks.keys.first { it != currentPlaylistID }
@@ -618,6 +632,10 @@ class MediaPlayerService : Service(),
 
         override fun isPlaying(): Boolean {
             return player?.playbackState?.isPlaying ?: false
+        }
+
+        override fun getCurrentTrack(): Track? {
+            return this@MediaPlayerService.currentTrack
         }
     }
     //endregion

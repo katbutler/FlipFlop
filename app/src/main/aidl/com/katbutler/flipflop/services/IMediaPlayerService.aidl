@@ -3,6 +3,8 @@ package com.katbutler.flipflop.services;
 
 import com.katbutler.flipflop.services.IMediaPlayerCallback;
 
+import com.katbutler.flipflop.spotifynet.models.Track;
+
 // Declare any non-default types here with import statements
 
 interface IMediaPlayerService {
@@ -24,6 +26,8 @@ interface IMediaPlayerService {
     void register(IMediaPlayerCallback callback);
 
     void unregister(IMediaPlayerCallback callback);
+
+    Track getCurrentTrack();
 
     boolean isPlaying();
 }

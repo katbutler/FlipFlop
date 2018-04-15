@@ -1,5 +1,6 @@
 package com.katbutler.flipflop
 
+import android.content.Context
 import android.os.Bundle
 import android.os.IBinder
 import android.support.v7.app.AppCompatActivity
@@ -14,6 +15,8 @@ import com.katbutler.flipflop.spotifynet.models.Track
 import com.spotify.sdk.android.player.*
 import kotlinx.android.synthetic.main.activity_player.*
 
+class NoPlaylistError : Exception("playlist is needed for the player activity")
+
 /**
  * Created by kat on 2018-03-25.
  */
@@ -21,19 +24,44 @@ class PlayerActivity : AppCompatActivity(), IMediaPlayerCallback {
 
     companion object {
         const val TAG = "PlayerActivity"
+
+        const val EXTRA_LAUNCHED_FROM_MEDIA_NOTIFICATION = "extra.LAUNCHED_FROM_MEDIA_NOTIFICATION"
+
+        private const val PLAYLIST_ID_1_KEY = "playlist1"
+        private const val PLAYLIST_ID_2_KEY = "playlist2"
     }
 
-    private val playlistId1 by lazy { intent.getStringExtra("playlist1") }
-    private val playlistId2 by lazy { intent.getStringExtra("playlist2") }
-    private val mediaPlayer by lazy { MediaPlayer(this) {
+    private val prefs by lazy { getSharedPreferences("player_prefs", Context.MODE_PRIVATE) }
+
+    private val launchedFromMedia by lazy { intent.getBooleanExtra(EXTRA_LAUNCHED_FROM_MEDIA_NOTIFICATION, false) }
+    private val playlistId1 by lazy { prefs.getString(PLAYLIST_ID_1_KEY, null) ?: throw NoPlaylistError() }
+    private val playlistId2 by lazy { prefs.getString(PLAYLIST_ID_2_KEY, null) ?: throw NoPlaylistError() }
+    private val mediaPlayer by lazy { MediaPlayer(this) { mediaPlayer ->
         val accessToken = SpotifyPrefs.getAccessToken(this) ?: return@MediaPlayer LoginActivity.showLoginActivity(this)
-        it.registerCallbacks(this@PlayerActivity)
-        it.prepare(accessToken, playlistId1, playlistId2)
+        mediaPlayer.registerCallbacks(this@PlayerActivity)
+        if (!launchedFromMedia) {
+            mediaPlayer.prepare(accessToken, playlistId1, playlistId2)
+        } else {
+            mediaPlayer.getCurrentTrack()?.let { track ->
+                updateTrackInfo(track)
+            }
+        }
     } }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player)
+
+        val playlistID1: String? = intent.getStringExtra(PLAYLIST_ID_1_KEY)
+        val playlistID2: String? = intent.getStringExtra(PLAYLIST_ID_2_KEY)
+
+        playlistID1?.let {
+            prefs.edit().putString(PLAYLIST_ID_1_KEY, it).apply()
+        }
+
+        playlistID2?.let {
+            prefs.edit().putString(PLAYLIST_ID_2_KEY, it).apply()
+        }
 
         mediaPlayer.connect()
 
@@ -104,6 +132,10 @@ class PlayerActivity : AppCompatActivity(), IMediaPlayerCallback {
     }
 
     override fun onTrackChanged(track: Track) {
+        updateTrackInfo(track)
+    }
+
+    private fun updateTrackInfo(track: Track) {
         this.runOnUiThread {
             val trackInfo = "${track.track.name} - ${track.track.artists.joinToString(", ") { it.name }}"
             track_info_textview.text = trackInfo
@@ -129,3 +161,4 @@ class PlayerActivity : AppCompatActivity(), IMediaPlayerCallback {
         return null
     }
 }
+

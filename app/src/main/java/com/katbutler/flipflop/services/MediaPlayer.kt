@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Build
 import android.os.IBinder
+import com.katbutler.flipflop.spotifynet.models.Track
 
 class MediaPlayer(val context: Context, onConnected: (MediaPlayer) -> Unit) {
     private var mediaPlayerService: IMediaPlayerService? = null
@@ -75,4 +76,6 @@ class MediaPlayer(val context: Context, onConnected: (MediaPlayer) -> Unit) {
     fun unregisterCallbacks(callback: IMediaPlayerCallback) {
         mediaPlayerService?.unregister(callback)
     }
+
+    fun getCurrentTrack(): Track? = mediaPlayerService?.currentTrack ?: throw IllegalStateException("MediaPlayer has not been initialized")
 }
