@@ -334,7 +334,7 @@ class MediaPlayerService : Service(),
                 .setAutoCancel(false)
                 .setOngoing(isPlaying)
 
-        val notification = if (Build.VERSION.SDK_INT >= 27) {
+        val notification = if (Build.VERSION.SDK_INT >= 26) {
             val mediaPlaybackChannel = NotificationChannel(
                     MEDIA_PLAYBACK_CHANNEL_ID,
                     getString(R.string.media_notification_channel_name),
@@ -351,10 +351,10 @@ class MediaPlayerService : Service(),
 
 
         if (!isPlaying) {
-            NotificationManagerCompat.from(this@MediaPlayerService).notify(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
+            startForeground(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
             stopForeground(false)
         } else {
-            this.startForeground(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
+            startForeground(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
         }
     }
 

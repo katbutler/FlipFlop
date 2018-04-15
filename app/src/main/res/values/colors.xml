@@ -1,15 +1,15 @@
 <!--?xml version="1.0" encoding="UTF-8"?-->
 <resources>
-    <color name="primaryColor">#66bb6a</color>
-    <color name="primaryLightColor">#98ee99</color>
-    <color name="primaryDarkColor">#338a3e</color>
-    <color name="secondaryColor">#ff7043</color>
-    <color name="secondaryLightColor">#ffa270</color>
-    <color name="secondaryDarkColor">#c63f17</color>
-    <color name="primaryTextColor">#fafafa</color>
-    <color name="secondaryTextColor">#fafafa</color>
-    <color name="darkColorText">#333333</color>
-    <color name="lightTextColor">#b3b3b3</color>
-    <color name="lightGreenTextColor">#a2c6a3</color>
-    <color name="grey_icon_color">#a3a3a3</color>
+<color name="primaryColor">#66bb6a</color>
+<color name="primaryLightColor">#98ee99</color>
+<color name="primaryDarkColor">#338a3e</color>
+<color name="secondaryColor">#ff7043</color>
+<color name="secondaryLightColor">#ffa270</color>
+<color name="secondaryDarkColor">#c63f17</color>
+<color name="primaryTextColor">#fafafa</color>
+<color name="secondaryTextColor">#fafafa</color>
+<color name="darkColorText">#333333</color>
+<color name="lightTextColor">#b3b3b3</color>
+<color name="lightGreenTextColor">#a2c6a3</color>
+<color name="grey_icon_color">#a3a3a3</color>
 </resources>

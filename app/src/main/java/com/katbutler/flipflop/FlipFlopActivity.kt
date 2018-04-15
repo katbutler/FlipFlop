@@ -33,7 +33,9 @@ import com.katbutler.flipflop.R.color.*
 import com.katbutler.flipflop.spotifynet.UnauthorizedException
 import com.katbutler.flipflop.spotifynet.UnknownSpotifyException
 import java.net.UnknownHostException
-
+import com.crashlytics.android.Crashlytics
+import com.crashlytics.android.core.CrashlyticsCore
+import io.fabric.sdk.android.Fabric
 
 class FlipFlopActivity : AppCompatActivity() {
 
@@ -65,6 +67,8 @@ class FlipFlopActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_flip_flop)
+
+        Fabric.with(this, Crashlytics())
 
         registerReceiver(connectivityReceiver, IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION))
 

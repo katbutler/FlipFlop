@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.os.Build
 import android.os.IBinder
 
 class MediaPlayer(val context: Context, onConnected: (MediaPlayer) -> Unit) {
@@ -24,8 +25,17 @@ class MediaPlayer(val context: Context, onConnected: (MediaPlayer) -> Unit) {
     }
 
     fun connect(): Boolean {
-        val service = Intent(context, MediaPlayerService::class.java)
-        return context.bindService(service, mediaServiceConnection, Context.BIND_AUTO_CREATE)
+        val serviceIntent = Intent(context, MediaPlayerService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent)
+        } else {
+            context.startService(serviceIntent)
+        }
+        return context.bindService(serviceIntent, mediaServiceConnection, Context.BIND_AUTO_CREATE)
+    }
+
+    fun disconnect() {
+        context.unbindService(mediaServiceConnection)
     }
 
     fun prepare(accessToken: String, playlistID1: String, playlistID2: String) {

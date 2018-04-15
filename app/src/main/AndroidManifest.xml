@@ -13,6 +13,11 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+        <meta-data
+            android:name="io.fabric.ApiKey"
+            android:value="2fa807024f2a045b37bdd7555632cd4a1f1af558"
+            />
+
         <activity android:name=".FlipFlopActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

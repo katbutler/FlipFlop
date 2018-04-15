@@ -9,3 +9,5 @@
 .externalNativeBuild
 packages/android-auth-1.0
 packages/android-sdk-24-noconnect-2.20b
+app/release/
+*.log

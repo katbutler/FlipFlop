@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.widget.Button
+import android.widget.Toast
 import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.spotify.sdk.android.authentication.AuthenticationClient
 import com.spotify.sdk.android.authentication.AuthenticationRequest
@@ -76,6 +77,12 @@ class LoginActivity : AppCompatActivity() {
 
     private fun onLoginResult(resultCode: Int, data: Intent?) {
         val response = AuthenticationClient.getResponse(resultCode, data)
+
+        response?.error?.let {
+            Toast.makeText(this, "Error: ${response.error}", Toast.LENGTH_LONG).show()
+            com.katbutler.flipflop.LoginActivity.showLoginActivity(this, true)
+            return@onLoginResult
+        }
 
         response.accessToken?.let {
             SpotifyPrefs.saveAccessToken(this, response.accessToken)

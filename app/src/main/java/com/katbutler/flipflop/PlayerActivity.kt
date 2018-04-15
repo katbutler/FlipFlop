@@ -6,6 +6,7 @@ import android.support.v7.app.AppCompatActivity
 import android.widget.SeekBar
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+import com.crashlytics.android.Crashlytics
 import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.katbutler.flipflop.services.IMediaPlayerCallback
 import com.katbutler.flipflop.services.MediaPlayer
@@ -42,6 +43,7 @@ class PlayerActivity : AppCompatActivity(), IMediaPlayerCallback {
     override fun onDestroy() {
         Spotify.destroyPlayer(this)
         mediaPlayer.unregisterCallbacks(this)
+        mediaPlayer.disconnect()
         super.onDestroy()
     }
 
