@@ -18,10 +18,10 @@ import android.content.IntentFilter
 import android.graphics.BitmapFactory
 import android.media.AudioFocusRequest
 import android.os.*
+import android.support.v4.app.NotificationManagerCompat
 import android.support.v4.media.app.NotificationCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
-import android.support.v4.app.NotificationManagerCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM_ART
 import android.view.KeyEvent
@@ -132,12 +132,10 @@ class MediaPlayerService : Service(),
                 }
 
                 KeyEvent.KEYCODE_MEDIA_PLAY -> {
-                    showPlayingNotification(true)
                     mediaPlayerBinding.playPause()
                 }
 
                 KeyEvent.KEYCODE_MEDIA_PAUSE -> {
-                    showPlayingNotification(false)
                     mediaPlayerBinding.playPause()
                 }
 
@@ -148,10 +146,6 @@ class MediaPlayerService : Service(),
                 KeyEvent.KEYCODE_MEDIA_PREVIOUS-> {
                     mediaPlayerBinding.skipToPrevious()
                 }
-
-//                KeyEvent.KEYCODE_SEEK-> {
-//
-//                }
                 else -> {
 
                 }
@@ -199,7 +193,7 @@ class MediaPlayerService : Service(),
         initMediaSession()
         initNoisyReceiver()
 
-        showPlayingNotification()
+        updateNotification()
     }
 
     override fun onBind(intent: Intent?): IBinder = mediaPlayerBinding
@@ -265,13 +259,7 @@ class MediaPlayerService : Service(),
         mediaSessionCompat.isActive = true
 
 
-        val art = BitmapFactory.decodeResource(resources, R.drawable.spotify_logo_black)
-
         val metadata = MediaMetadataCompat.Builder()
-                .putBitmap(METADATA_KEY_ALBUM_ART, art)
-                .putText(MediaMetadataCompat.METADATA_KEY_ALBUM, "Test")
-                .putText(MediaMetadataCompat.METADATA_KEY_ARTIST, "katbut")
-                .putText(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, "Title")
                 .build()
         mediaSessionCompat.setMetadata(metadata)
 
@@ -319,8 +307,8 @@ class MediaPlayerService : Service(),
         mediaSessionCompat.setPlaybackState(playbackStateBuilder.build())
     }
 
-    private fun showPlayingNotification(isPlaying: Boolean = true) {
-        Log.d(TAG, "showPlayingNotification")
+    private fun updateNotification(isPlaying: Boolean = mediaPlayerBinding.isPlaying) {
+        Log.d(TAG, "updateNotification")
         val notificationBuilder = MediaStyleHelper.from(this@MediaPlayerService, mediaSessionCompat)
                 .addAction(android.support.v4.app.NotificationCompat.Action(
                         R.drawable.ic_skip_previous_black_24dp,
@@ -340,10 +328,11 @@ class MediaPlayerService : Service(),
                         "Next",
                         MediaButtonReceiver.buildMediaButtonPendingIntent(this, PlaybackStateCompat.ACTION_SKIP_TO_NEXT)))
                 .setStyle(NotificationCompat.MediaStyle()
-                        .setShowActionsInCompactView(2)
+                        .setShowActionsInCompactView(*arrayOf(1, 2, 3).toIntArray())
                         .setMediaSession(mediaSessionCompat.sessionToken))
                 .setSmallIcon(R.drawable.filpflop_cutout_svg)
-
+                .setAutoCancel(false)
+                .setOngoing(isPlaying)
 
         val notification = if (Build.VERSION.SDK_INT >= 27) {
             val mediaPlaybackChannel = NotificationChannel(
@@ -361,9 +350,12 @@ class MediaPlayerService : Service(),
         }
 
 
-        this.startForeground(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
-
-//        NotificationManagerCompat.from(this@MediaPlayerService).notify(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
+        if (!isPlaying) {
+            NotificationManagerCompat.from(this@MediaPlayerService).notify(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
+            stopForeground(false)
+        } else {
+            this.startForeground(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
+        }
     }
 
     private fun initFirstTrack() {
@@ -396,13 +388,13 @@ class MediaPlayerService : Service(),
 
         val metadata = MediaMetadataCompat.Builder()
                 .putBitmap(METADATA_KEY_ALBUM_ART, art)
-                .putText(MediaMetadataCompat.METADATA_KEY_ALBUM, track.album.name)
-                .putText(MediaMetadataCompat.METADATA_KEY_ARTIST, track.artists.joinToString { it.name })
-                .putText(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, track.album.name)
+                .putText(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, track.album.name)
+                .putText(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, track.artists.joinToString { it.name })
+                .putText(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, track.name)
                 .build()
         mediaSessionCompat.setMetadata(metadata)
 
-        showPlayingNotification(mediaPlayerBinding.isPlaying)
+        updateNotification()
     }
 
     private fun playNextTrack() {
@@ -459,6 +451,7 @@ class MediaPlayerService : Service(),
     //region ConnectionStateCallback methods
     override fun onLoggedOut() {
         Log.d(PlayerActivity.TAG, "logged out")
+        notificationManager.cancel(MEDIA_PLAYBACK_NOTIFICATION_ID)
         notifyOnLoggedOutListeners()
     }
 
@@ -487,12 +480,15 @@ class MediaPlayerService : Service(),
 
     override fun onPlaybackEvent(playerEvent: PlayerEvent?) {
         Log.d(PlayerActivity.TAG, "$playerEvent")
-//        if (playerEvent?.name == "kSpPlaybackNotifyTrackChanged") {
-//            player.resume(this)
-//        }
 
-        if (playerEvent == PlayerEvent.kSpPlaybackNotifyTrackDelivered) {
-            playNextTrack()
+        when (playerEvent) {
+            PlayerEvent.kSpPlaybackNotifyPlay -> {
+                updateNotification(true)
+            }
+            PlayerEvent.kSpPlaybackNotifyTrackDelivered -> {
+                playNextTrack()
+            }
+            else -> { }
         }
 
         playerEvent?.let {
@@ -558,11 +554,14 @@ class MediaPlayerService : Service(),
         override fun playPause() {
             Log.d(TAG, "Play pause")
             if (hasFetched) {
-                if (isPlaying) {
+                val newPlayingState = if (isPlaying) {
                     player?.pause(this@MediaPlayerService) ?: throw MediaPlayerServiceException("Player not initialized")
+                    false
                 } else {
                     player?.resume(this@MediaPlayerService) ?: throw MediaPlayerServiceException("Player not initialized")
+                    true
                 }
+                updateNotification(newPlayingState)
             }
         }
 
