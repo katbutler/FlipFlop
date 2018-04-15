@@ -47,9 +47,10 @@ class MediaPlayerService : Service(),
         Player.OperationCallback {
 
     companion object {
-        const val TAG = "MediaPlayerService"
-        const val MEDIA_PLAYBACK_CHANNEL_ID = "com.katbutler.flipflop.media_playback"
-        const val MEDIA_PLAYBACK_NOTIFICATION_ID = 0xEEEE
+        private const val TAG = "MediaPlayerService"
+        private const val MEDIA_PLAYBACK_CHANNEL_ID = "com.katbutler.flipflop.media_playback"
+        private const val MEDIA_PLAYBACK_NOTIFICATION_ID = 0xEEEE
+        private const val ACTION_TEAR_DOWN = "com.katbutler.flipflop.action.TEAR_DOWN"
     }
 
     private lateinit var mediaPlayer: MediaPlayer
@@ -210,6 +211,11 @@ class MediaPlayerService : Service(),
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand")
+        if (intent?.action == ACTION_TEAR_DOWN) {
+            if (callbackHandlers.size == 0) {
+                stopSelf()
+            }
+        }
         MediaButtonReceiver.handleIntent(mediaSessionCompat, intent)
         return super.onStartCommand(intent, flags, startId)
     }
@@ -340,14 +346,16 @@ class MediaPlayerService : Service(),
                                 Intent(this, PlayerActivity::class.java).apply {
                                     putExtra(PlayerActivity.EXTRA_LAUNCHED_FROM_MEDIA_NOTIFICATION, true)
                                 },
-                                PendingIntent.FLAG_UPDATE_CURRENT
+                                PendingIntent.FLAG_CANCEL_CURRENT
                         )
                 )
                 .setDeleteIntent(
                         PendingIntent.getService(
                         this,
                                 0xDE1,
-                                Intent(this, MediaPlayerService::class.java),
+                                Intent(ACTION_TEAR_DOWN).apply {
+                                    component = ComponentName(this@MediaPlayerService, MediaPlayerService::class.java)
+                                },
                                 PendingIntent.FLAG_UPDATE_CURRENT
                         )
                 )
@@ -367,8 +375,12 @@ class MediaPlayerService : Service(),
             notificationBuilder.build()
         }
 
-
-        startForeground(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
+        if (!isPlaying) {
+            NotificationManagerCompat.from(this@MediaPlayerService).notify(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
+            stopForeground(false)
+        } else {
+            startForeground(MEDIA_PLAYBACK_NOTIFICATION_ID, notification)
+        }
     }
 
     private fun initFirstTrack() {
