@@ -345,6 +345,7 @@ class MediaPlayerService : Service(),
                                 0x1,
                                 Intent(this, PlayerActivity::class.java).apply {
                                     putExtra(PlayerActivity.EXTRA_LAUNCHED_FROM_MEDIA_NOTIFICATION, true)
+                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
                                 },
                                 PendingIntent.FLAG_CANCEL_CURRENT
                         )
