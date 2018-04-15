@@ -82,7 +82,7 @@ class MediaPlayerService : Service(),
                     msg?.what == 0xFEED -> {
                         val progress = player?.playbackState?.positionMs?.toInt()
                         progress?.let {
-                            notifyUpdateProgressChanged(progress, currentTrack?.track?.durationMs ?: progress)
+                            notifyUpdateProgressChanged(progress, currentPlayingTrack?.track?.durationMs ?: progress)
                         }
                         handler.sendEmptyMessageDelayed(0xFEED, 1000)
                     }
@@ -97,14 +97,16 @@ class MediaPlayerService : Service(),
         }
     }
 
-    var player: SpotifyPlayer? = null
-    lateinit var currentPlaylistID: String
-    var currentTrack: Track? = null
-    var swapTrack: Track? = null
+    private var player: SpotifyPlayer? = null
+    private var currentPlaylistID: String? = null
+    private var currentPlayingTrack: Track? = null
+    private var swapTrack: Track? = null
     private val playlistTracks = mutableMapOf<String, Tracks>()
     private lateinit var playlist1Tracks: Tracks
     private lateinit var playlist2Tracks: Tracks
     private var hasFetched: Boolean = false
+    private var playlistID1: String? = null
+    private var playlistID2: String? = null
 
     private val spotifyNet by lazy {
         SpotifyNet(this)
@@ -339,17 +341,6 @@ class MediaPlayerService : Service(),
                 .setSmallIcon(R.drawable.filpflop_cutout_svg)
                 .setAutoCancel(false)
                 .setOngoing(isPlaying)
-                .setContentIntent(
-                        PendingIntent.getActivity(
-                                this,
-                                0x1,
-                                Intent(this, PlayerActivity::class.java).apply {
-                                    putExtra(PlayerActivity.EXTRA_LAUNCHED_FROM_MEDIA_NOTIFICATION, true)
-                                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
-                                },
-                                PendingIntent.FLAG_CANCEL_CURRENT
-                        )
-                )
                 .setDeleteIntent(
                         PendingIntent.getService(
                         this,
@@ -360,6 +351,19 @@ class MediaPlayerService : Service(),
                                 PendingIntent.FLAG_UPDATE_CURRENT
                         )
                 )
+
+        playlistID1?.let { playlistID1 ->
+            playlistID2?.let { playlistID2 ->
+                notificationBuilder.setContentIntent(
+                        PendingIntent.getActivity(
+                                this,
+                                0x1,
+                                PlayerActivity.intentFor(this, playlistID1, playlistID2, true),
+                                PendingIntent.FLAG_CANCEL_CURRENT
+                        )
+                )
+            }
+        }
 
         val notification = if (Build.VERSION.SDK_INT >= 26) {
             val mediaPlaybackChannel = NotificationChannel(
@@ -392,7 +396,7 @@ class MediaPlayerService : Service(),
     }
 
     private fun playTrack(track: Track) {
-        currentTrack = track
+        currentPlayingTrack = track
         player?.playUri(this, track.track.uri, 0, 0)
                 ?: throw MediaPlayerServiceException("Player not initialized")
         notifyUpdateProgressChanged(0, track.track.durationMs);
@@ -404,7 +408,7 @@ class MediaPlayerService : Service(),
 
     private fun updateNotificationMetadata() {
         if (mediaSessionCompat == null) return
-        val track = currentTrack?.track ?: return
+        val track = currentPlayingTrack?.track ?: return
 
         val albumArtImage = track.album.images.firstOrNull()
 
@@ -425,7 +429,7 @@ class MediaPlayerService : Service(),
 
     private fun playNextTrack() {
         val tracks = playlistTracks[currentPlaylistID]
-        val newHead: List<Track>? = tracks?.items?.dropWhile { it.track.id != currentTrack?.track?.id }?.drop(1)
+        val newHead: List<Track>? = tracks?.items?.dropWhile { it.track.id != currentPlayingTrack?.track?.id }?.drop(1)
         (newHead?.firstOrNull() ?: tracks?.items?.firstOrNull())?.let {
             playTrack(it)
         }
@@ -434,14 +438,22 @@ class MediaPlayerService : Service(),
     private fun playPrevTrack() {
         val tracks = playlistTracks[currentPlaylistID]
         val reversedItems = tracks?.items?.reversed()
-        val newHead: List<Track>? = reversedItems?.dropWhile { it.track.id != currentTrack?.track?.id }?.drop(1)
+        val newHead: List<Track>? = reversedItems?.dropWhile { it.track.id != currentPlayingTrack?.track?.id }?.drop(1)
         (newHead?.firstOrNull() ?: reversedItems?.firstOrNull())?.let {
             playTrack(it)
         }
     }
 
     private fun fetchTracks(playlistID1: String, playlistID2: String) {
+        Log.d(TAG, "fetchTracks $playlistID1  $playlistID2")
         val userID = SpotifyPrefs.getUserID(this) ?: return
+
+        this.playlistID1 = playlistID1
+        this.playlistID2 = playlistID2
+
+        playlistTracks.clear()
+        swapTrack = null
+
         currentPlaylistID = playlistID1
 
         spotifyNet.getPlaylistTracks(userID, playlistID1, { tracks ->
@@ -460,6 +472,7 @@ class MediaPlayerService : Service(),
         }, { err ->
             Toast.makeText(this, err.toString(), Toast.LENGTH_LONG).show()
         })
+
     }
 
     //region Player.OperationCallback
@@ -596,15 +609,17 @@ class MediaPlayerService : Service(),
             Log.d(TAG, "swap")
             if (hasFetched) {
                 val tempTrack = swapTrack
-                swapTrack = currentTrack
-                this@MediaPlayerService.currentTrack = tempTrack
+                swapTrack = currentPlayingTrack
+                currentPlayingTrack = tempTrack
 
 
                 currentPlaylistID = playlistTracks.keys.first { it != currentPlaylistID }
-                val tracks = playlistTracks[currentPlaylistID]
-                val nextTrack: Track? = currentTrack ?: tracks?.items?.firstOrNull()
-                nextTrack?.let {
-                    playTrack(it)
+                currentPlaylistID?.let { currentPlaylistID ->
+                    val tracks = playlistTracks[currentPlaylistID]
+                    val nextTrack: Track? = currentTrack ?: tracks?.items?.firstOrNull()
+                    nextTrack?.let {
+                        playTrack(it)
+                    }
                 }
             }
         }
@@ -648,7 +663,7 @@ class MediaPlayerService : Service(),
         }
 
         override fun getCurrentTrack(): Track? {
-            return this@MediaPlayerService.currentTrack
+            return currentPlayingTrack
         }
     }
     //endregion
