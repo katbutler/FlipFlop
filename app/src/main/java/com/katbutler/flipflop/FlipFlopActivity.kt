@@ -257,10 +257,10 @@ class FlipFlopActivity : AppCompatActivity() {
     private fun showPlayer() {
         val playerIntent = Intent(this, PlayerActivity::class.java)
         playerIntent.apply {
-            putExtra("playlist1", selectedPlaylists[0].id)
-            putExtra("playlist2", selectedPlaylists[1].id)
-            putExtra("playlist1uri", selectedPlaylists[0].uri)
-            putExtra("playlist2uri", selectedPlaylists[1].uri)
+            val playlist1 = selectedPlaylists.first()
+            val playlist2 = selectedPlaylists.last()
+            putExtra(PlayerActivity.PLAYLIST_1_KEY, playlist1)
+            putExtra(PlayerActivity.PLAYLIST_2_KEY, playlist2)
         }
 
         startActivity(playerIntent)

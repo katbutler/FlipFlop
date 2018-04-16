@@ -58,7 +58,7 @@ class MediaPlayer(val context: Context, onConnected: (MediaPlayer) -> Unit) {
         context.unbindService(mediaServiceConnection)
     }
 
-    fun prepare(accessToken: String, playlist1: String, playlist2: String) = handleRemoteException {
+    fun prepare(accessToken: String, playlist1: Playlist, playlist2: Playlist) = handleRemoteException {
         mediaPlayerService?.prepare(accessToken, playlist1, playlist2)
     }
 

@@ -8,15 +8,14 @@ import android.support.v7.app.AppCompatActivity
 import android.widget.SeekBar
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
-import com.crashlytics.android.Crashlytics
 import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.katbutler.flipflop.services.IMediaPlayerCallback
 import com.katbutler.flipflop.services.MediaPlayer
 import com.katbutler.flipflop.spotifynet.models.Track
 import com.spotify.sdk.android.player.*
 import kotlinx.android.synthetic.main.activity_player.*
-import android.support.v4.app.NavUtils
 import android.view.MenuItem
+import com.katbutler.flipflop.spotifynet.models.Playlist
 
 
 class NoPlaylistError : Exception("playlist is needed for the player activity")
@@ -31,19 +30,19 @@ class PlayerActivity : AppCompatActivity(), IMediaPlayerCallback {
 
         const val EXTRA_LAUNCHED_FROM_MEDIA_NOTIFICATION = "extra.LAUNCHED_FROM_MEDIA_NOTIFICATION"
 
-        private const val PLAYLIST_ID_1_KEY = "playlist1"
-        private const val PLAYLIST_ID_2_KEY = "playlist2"
+        const val PLAYLIST_1_KEY = "playlist1"
+        const val PLAYLIST_2_KEY = "playlist2"
 
         fun intentFor(
                 context: Context,
-                playlistID1: String,
-                playlistID2: String,
+                playlist1: Playlist,
+                playlist2: Playlist,
                 isFromMediaNotification: Boolean = false,
                 intentFlags: Int = Intent.FLAG_ACTIVITY_CLEAR_TOP) =
                 Intent(context, PlayerActivity::class.java).apply {
                     putExtra(PlayerActivity.EXTRA_LAUNCHED_FROM_MEDIA_NOTIFICATION, isFromMediaNotification)
-                    putExtra(PLAYLIST_ID_1_KEY, playlistID1)
-                    putExtra(PLAYLIST_ID_2_KEY, playlistID2)
+                    putExtra(PLAYLIST_1_KEY, playlist1)
+                    putExtra(PLAYLIST_2_KEY, playlist2)
                     flags = intentFlags
                 }
     }
@@ -51,13 +50,13 @@ class PlayerActivity : AppCompatActivity(), IMediaPlayerCallback {
     private val prefs by lazy { getSharedPreferences("player_prefs", Context.MODE_PRIVATE) }
 
     private val launchedFromMedia by lazy { intent.getBooleanExtra(EXTRA_LAUNCHED_FROM_MEDIA_NOTIFICATION, false) }
-    private val playlistId1 by lazy { intent.getStringExtra(PLAYLIST_ID_1_KEY) ?: throw NoPlaylistError() }
-    private val playlistId2 by lazy { intent.getStringExtra(PLAYLIST_ID_2_KEY) ?: throw NoPlaylistError() }
+    private val playlist1 by lazy { intent.getParcelableExtra<Playlist>(PLAYLIST_1_KEY) ?: throw NoPlaylistError() }
+    private val playlist2 by lazy { intent.getParcelableExtra<Playlist>(PLAYLIST_2_KEY) ?: throw NoPlaylistError() }
     private val mediaPlayer by lazy { MediaPlayer(this) { mediaPlayer ->
         val accessToken = SpotifyPrefs.getAccessToken(this) ?: return@MediaPlayer LoginActivity.showLoginActivity(this)
         mediaPlayer.registerCallbacks(this@PlayerActivity)
         if (!launchedFromMedia) {
-            mediaPlayer.prepare(accessToken, playlistId1, playlistId2)
+            mediaPlayer.prepare(accessToken, playlist1, playlist2)
         } else {
             mediaPlayer.getCurrentTrack()?.let { track ->
                 updateTrackInfo(track)

@@ -107,8 +107,8 @@ class MediaPlayerService : Service(),
     private lateinit var playlist1Tracks: Tracks
     private lateinit var playlist2Tracks: Tracks
     private var hasFetched: Boolean = false
-    private var playlistID1: String? = null
-    private var playlistID2: String? = null
+    private var playlist1: Playlist? = null
+    private var playlist2: Playlist? = null
 
     private val spotifyNet by lazy {
         SpotifyNet(this)
@@ -355,13 +355,13 @@ class MediaPlayerService : Service(),
                         )
                 )
 
-        playlistID1?.let { playlistID1 ->
-            playlistID2?.let { playlistID2 ->
+        playlist1?.let { playlist1 ->
+            playlist2?.let { playlist2 ->
                 notificationBuilder.setContentIntent(
                         PendingIntent.getActivity(
                                 this,
                                 0x1,
-                                PlayerActivity.intentFor(this, playlistID1, playlistID2, true),
+                                PlayerActivity.intentFor(this, playlist1, playlist2, true),
                                 PendingIntent.FLAG_CANCEL_CURRENT
                         )
                 )
@@ -451,31 +451,31 @@ class MediaPlayerService : Service(),
         }
     }
 
-    private fun fetchTracks(playlistID1: String, playlistID2: String) {
-        Log.d(TAG, "fetchTracks $playlistID1  $playlistID2")
+    private fun fetchTracks(playlist1: Playlist, playlist2: Playlist) {
+        Log.d(TAG, "fetchTracks $playlist1  $playlist2")
         val userID = SpotifyPrefs.getUserID(this) ?: return
 
-        this.playlistID1 = playlistID1
-        this.playlistID2 = playlistID2
+        this.playlist1 = playlist1
+        this.playlist2 = playlist2
 
         playlistTracks.clear()
         swapTrack = null
 
-        currentPlaylistID = playlistID1
+        currentPlaylistID = playlist1.id
 
-        spotifyNet.getPlaylistTracks(userID, playlistID1, { tracks ->
+        spotifyNet.getPlaylistTracks(playlist1.owner.id, playlist1.id, { tracks ->
             playlist1Tracks = tracks
             hasFetched = true
-            playlistTracks[playlistID1] = tracks
+            playlistTracks[playlist1.id] = tracks
             handler.sendEmptyMessageDelayed(0xDEAF, 1000)
         }, { err ->
             Toast.makeText(this, err.toString(), Toast.LENGTH_LONG).show()
         })
 
-        spotifyNet.getPlaylistTracks(userID, playlistID2, { tracks ->
+        spotifyNet.getPlaylistTracks(playlist2.owner.id, playlist2.id, { tracks ->
             playlist2Tracks = tracks
             hasFetched = true
-            playlistTracks[playlistID2] = tracks
+            playlistTracks[playlist2.id] = tracks
         }, { err ->
             Toast.makeText(this, err.toString(), Toast.LENGTH_LONG).show()
         })
@@ -582,7 +582,7 @@ class MediaPlayerService : Service(),
 
     private val mediaPlayerBinding = object : IMediaPlayerService.Stub() {
 
-        override fun prepare(accessToken: String, playlistID1: String, playlistID2: String) {
+        override fun prepare(accessToken: String, playlistID1: Playlist, playlistID2: Playlist) {
             Log.d(TAG, "be prepared")
 
             fetchTracks(playlistID1, playlistID2)
