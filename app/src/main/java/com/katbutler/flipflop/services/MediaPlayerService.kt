@@ -26,12 +26,14 @@ import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.MediaMetadataCompat.METADATA_KEY_ALBUM_ART
 import android.view.KeyEvent
 import android.widget.Toast
+import com.crashlytics.android.Crashlytics
 import com.katbutler.flipflop.*
 import com.katbutler.flipflop.BuildConfig
 import com.katbutler.flipflop.R
 import com.katbutler.flipflop.helpers.MediaStyleHelper
 import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.katbutler.flipflop.spotifynet.SpotifyNet
+import com.katbutler.flipflop.spotifynet.models.Playlist
 import com.katbutler.flipflop.spotifynet.models.Track
 import com.katbutler.flipflop.spotifynet.models.Tracks
 import com.spotify.sdk.android.player.*
@@ -203,6 +205,7 @@ class MediaPlayerService : Service(),
 
     override fun onDestroy() {
         super.onDestroy()
+        cancelMediaNotification()
         try {
             unregisterReceiver(mediaButtonReceiver)
             unregisterReceiver(noisyReceiver)
@@ -427,6 +430,10 @@ class MediaPlayerService : Service(),
         updateNotification()
     }
 
+    private fun cancelMediaNotification() {
+        notificationManager.cancel(MEDIA_PLAYBACK_NOTIFICATION_ID)
+    }
+
     private fun playNextTrack() {
         val tracks = playlistTracks[currentPlaylistID]
         val newHead: List<Track>? = tracks?.items?.dropWhile { it.track.id != currentPlayingTrack?.track?.id }?.drop(1)
@@ -477,44 +484,47 @@ class MediaPlayerService : Service(),
 
     //region Player.OperationCallback
     override fun onSuccess() {
-        Log.d(PlayerActivity.TAG, "onSuccess")
+        Log.d(TAG, "onSuccess")
     }
 
     override fun onError(err: Error?) {
-        Log.d(PlayerActivity.TAG, err.toString())
-
+        Log.d(TAG, err.toString())
+        Crashlytics.log(Log.ERROR, TAG, "Spotfiy Player error: ${err?.name}")
         Toast.makeText(this, err.toString(), Toast.LENGTH_LONG).show()
     }
     //endregion
 
     //region ConnectionStateCallback methods
     override fun onLoggedOut() {
-        Log.d(PlayerActivity.TAG, "logged out")
-        notificationManager.cancel(MEDIA_PLAYBACK_NOTIFICATION_ID)
+        Log.d(TAG, "logged out")
+        cancelMediaNotification()
         notifyOnLoggedOutListeners()
     }
 
     override fun onLoggedIn() {
-        Log.d(PlayerActivity.TAG, "logged in")
+        Log.d(TAG, "logged in")
     }
 
     override fun onConnectionMessage(p0: String?) {
-        Log.d(PlayerActivity.TAG, "onConnectionMessage $p0")
+        Log.d(TAG, "onConnectionMessage $p0")
     }
 
     override fun onLoginFailed(err: Error?) {
-        Log.d(PlayerActivity.TAG, "onLoginFailed $err")
+        Log.d(TAG, "onLoginFailed $err")
         notifyLoginFailureListeners()
+        Crashlytics.log(Log.ERROR, TAG, "Spotfiy Player onLoginFailed: ${err?.name}")
     }
 
     override fun onTemporaryError() {
-        Log.d(PlayerActivity.TAG, "temp error")
+        Log.d(TAG, "temp error")
+        Crashlytics.log(Log.WARN, TAG, "Spotify Temporary Error")
     }
     //endregion
 
     //region Player.NotificationCallback methods
-    override fun onPlaybackError(p0: Error?) {
-        Log.d(PlayerActivity.TAG, "$p0")
+    override fun onPlaybackError(err: Error?) {
+        Log.d(TAG, "$err")
+        Crashlytics.log(Log.ERROR, TAG, "Spotfiy Playback Error: ${err?.name}")
     }
 
     override fun onPlaybackEvent(playerEvent: PlayerEvent?) {
@@ -586,7 +596,9 @@ class MediaPlayerService : Service(),
                 }
 
                 override fun onError(throwable: Throwable) {
-                    Log.e(FlipFlopActivity.TAG, "Could not initialize player: " + throwable.message)
+                    Log.e(TAG, "Could not initialize player: " + throwable.message)
+                    cancelMediaNotification()
+                    Crashlytics.logException(throwable)
                 }
             })
         }

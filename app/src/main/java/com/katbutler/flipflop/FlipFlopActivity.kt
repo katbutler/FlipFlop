@@ -93,7 +93,11 @@ class FlipFlopActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(connectivityReceiver)
+        try {
+            unregisterReceiver(connectivityReceiver)
+        } catch (e: Exception) {
+            Log.i(TAG, "Unable to unregisterReceiver", e)
+        }
     }
 
     private fun initSpotify() {
@@ -104,6 +108,8 @@ class FlipFlopActivity : AppCompatActivity() {
 
     private fun fetchSpotifyData() {
         spotifyNet.getCurrentUserProfile({ userProfile ->
+            Crashlytics.setUserIdentifier(userProfile.id)
+            Crashlytics.setString("SPOTIFY_PRODUCT", userProfile.product)
             SpotifyPrefs.saveCurrentUserID(this, userProfile.id)
             if (userProfile.product != "premium") {
                 showError(R.string.need_premium_account, R.drawable.ic_need_premium_grey_60dp)

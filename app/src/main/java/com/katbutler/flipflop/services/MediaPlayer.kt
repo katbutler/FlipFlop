@@ -6,9 +6,16 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Build
 import android.os.IBinder
+import com.crashlytics.android.Crashlytics
+import com.katbutler.flipflop.spotifynet.models.Playlist
 import com.katbutler.flipflop.spotifynet.models.Track
 
 class MediaPlayer(val context: Context, onConnected: (MediaPlayer) -> Unit) {
+
+    companion object {
+        private const val TAG = "MediaPlayer"
+    }
+
     private var mediaPlayerService: IMediaPlayerService? = null
 
     private val mediaServiceConnection by lazy {
@@ -35,47 +42,64 @@ class MediaPlayer(val context: Context, onConnected: (MediaPlayer) -> Unit) {
         return context.bindService(serviceIntent, mediaServiceConnection, Context.BIND_AUTO_CREATE)
     }
 
-    fun disconnect() {
+    /**
+     * Run the function and log any exceptions to Crashlytics
+     */
+    private fun <T> handleRemoteException(fn: () -> T): T {
+        try {
+            return fn()
+        } catch (e: Exception) {
+            Crashlytics.logException(e)
+            throw e
+        }
+    }
+
+    fun disconnect() = handleRemoteException {
         context.unbindService(mediaServiceConnection)
     }
 
-    fun prepare(accessToken: String, playlistID1: String, playlistID2: String) {
-        mediaPlayerService?.prepare(accessToken, playlistID1, playlistID2)
+    fun prepare(accessToken: String, playlist1: String, playlist2: String) = handleRemoteException {
+        mediaPlayerService?.prepare(accessToken, playlist1, playlist2)
     }
 
-    fun playPause() {
+    fun playPause() = handleRemoteException {
         mediaPlayerService?.playPause()
     }
 
-    fun swap() {
+    fun swap() = handleRemoteException {
         mediaPlayerService?.swap()
     }
 
-    fun skipToNext() {
+    fun skipToNext() = handleRemoteException {
         mediaPlayerService?.skipToNext()
     }
 
-    fun skipToPrevious() {
+    fun skipToPrevious() = handleRemoteException {
         mediaPlayerService?.skipToPrevious()
     }
 
-    fun seekToPosition(position: Int) {
+    fun seekToPosition(position: Int) = handleRemoteException {
         mediaPlayerService?.seekToPosition(position)
     }
 
-    fun shuffle() {
+    fun shuffle() = handleRemoteException {
         mediaPlayerService?.shuffle()
     }
 
-    fun isPlaying() = mediaPlayerService?.isPlaying ?: false
+    fun isPlaying(): Boolean = handleRemoteException {
+        mediaPlayerService?.isPlaying == true
+    }
 
-    fun registerCallbacks(callback: IMediaPlayerCallback) {
+    fun registerCallbacks(callback: IMediaPlayerCallback) = handleRemoteException {
         mediaPlayerService?.register(callback)
     }
 
-    fun unregisterCallbacks(callback: IMediaPlayerCallback) {
+    fun unregisterCallbacks(callback: IMediaPlayerCallback) = handleRemoteException {
         mediaPlayerService?.unregister(callback)
     }
 
-    fun getCurrentTrack(): Track? = mediaPlayerService?.currentTrack ?: throw IllegalStateException("MediaPlayer has not been initialized")
+    fun getCurrentTrack(): Track? = handleRemoteException {
+        mediaPlayerService?.currentTrack
+                ?: throw IllegalStateException("MediaPlayer has not been initialized")
+    }
 }

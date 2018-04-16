@@ -2,6 +2,7 @@ package com.katbutler.flipflop.spotifynet
 
 import android.content.Context
 import android.util.Log
+import com.crashlytics.android.Crashlytics
 import com.katbutler.flipflop.prefs.SpotifyPrefs
 import com.katbutler.flipflop.spotifynet.models.Playlists
 import com.katbutler.flipflop.spotifynet.models.Tracks
@@ -61,7 +62,10 @@ class SpotifyNet(val context: Context) {
                 }
                 when (response.code()) {
                     401 -> onError(UnauthorizedException("Unauthorized"))
-                    else -> onError(UnknownSpotifyException("Unknown Error: ${response.code()} ${response.message()}"))
+                    else -> {
+                        logErrorResponse(response)
+                        onError(UnknownSpotifyException("Unknown Error: ${response.code()} ${response.message()}"))
+                    }
                 }
             }
 
@@ -85,7 +89,10 @@ class SpotifyNet(val context: Context) {
 
                 when (response.code()) {
                     401 -> onError(UnauthorizedException("Unauthorized"))
-                    else -> onError(UnknownSpotifyException("Unknown Error: ${response.code()} ${response.message()}"))
+                    else -> {
+                        logErrorResponse(response)
+                        onError(UnknownSpotifyException("Unknown Error: ${response.code()} ${response.message()}"))
+                    }
                 }
             }
 
@@ -109,7 +116,10 @@ class SpotifyNet(val context: Context) {
 
                 when (response.code()) {
                     401 -> onError(UnauthorizedException("Unauthorized"))
-                    else -> onError(UnknownSpotifyException("Unknown Error"))
+                    else -> {
+                        logErrorResponse(response, "UserID: $userID   playlistID: $playlistID")
+                        onError(UnknownSpotifyException("Unknown Error"))
+                    }
                 }
             }
 
@@ -119,6 +129,11 @@ class SpotifyNet(val context: Context) {
                 onError(t)
             }
         })
+    }
+
+    private fun logErrorResponse(response: Response<*>, message: String = "") {
+        val errorMessage = response.errorBody()?.string() ?: response.message()
+        Crashlytics.log(Log.ERROR, TAG, "Unhandled response code: ${response.code()}; ${errorMessage ?: "No Message"} - $message")
     }
     //endregion
 }
