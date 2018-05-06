@@ -38,7 +38,7 @@ class PlaylistsAdapter(val playlists: Playlists, private val onSelectPlaylist: O
         return ViewHolder(parent.context, view)
     }
 
-    override fun getItemCount() = playlists.total
+    override fun getItemCount() = playlists.items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val playlist = playlists.items[position]
